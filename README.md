@@ -1,6 +1,6 @@
 # ScholarPath AdDU
 
-A React + Vite frontend for the ScholarPath AdDU capstone manuscript.
+A React + Vite and Supabase webapp for our ScholarPath AdDU capstone.
 
 ## What’s included
 - Scholarship discovery with faceted search
