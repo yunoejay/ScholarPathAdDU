@@ -284,10 +284,9 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
   );
 }
 
-export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, rememberedEmail, rememberedRole, isRemembered, theme, onToggleTheme }) {
+export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, rememberedEmail, isRemembered, theme, onToggleTheme }) {
   const [email, setEmail] = useState(rememberedEmail || 'student@addu.edu.ph');
   const [password, setPassword] = useState('password123');
-  const [role, setRole] = useState(rememberedRole || 'student');
   const [rememberMe, setRememberMe] = useState(isRemembered || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -313,7 +312,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
     setFeedbackMessage('');
     setFeedbackTone('info');
 
-    const result = await onLogin({ email, password, role, rememberMe });
+    const result = await onLogin({ email, password, rememberMe });
 
     if (result?.success) {
       setFeedbackMessage(result.fallback ? 'Signed in using the demo mode fallback.' : 'Signed in successfully.');
@@ -434,7 +433,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
           </div>
 
           <form className="login-form" onSubmit={submitLogin}>
-            <RolePicker label="Role" value={role} onChange={setRole} idPrefix="login" />
             <label>
               <span>Email</span>
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="name@addu.edu.ph" />
