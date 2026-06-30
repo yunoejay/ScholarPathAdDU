@@ -284,7 +284,7 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
   );
 }
 
-export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, isRemembered, theme, onToggleTheme }) {
+export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, rememberedEmail, rememberedRole, isRemembered, theme, onToggleTheme }) {
   const [email, setEmail] = useState(rememberedEmail || 'student@addu.edu.ph');
   const [password, setPassword] = useState('password123');
   const [role, setRole] = useState(rememberedRole || 'student');
@@ -326,36 +326,68 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
     setIsSubmitting(false);
   };
 
-  const handleForgotPassword = (event) => {
+  const handleForgotPassword = async (event) => {
     event.preventDefault();
-    setResetSent(true);
-    setTimeout(() => {
-      setShowForgotPassword(false);
-      setResetSent(false);
-      setForgotEmail('');
-    }, 2000);
-  };
+    setFeedbackMessage('');
+    setFeedbackTone('info');
 
-  const handleCreateAccount = (event) => {
-    event.preventDefault();
-    if (createAccountData.password !== createAccountData.confirmPassword) {
-      alert('Passwords do not match');
+    const result = await onForgotPassword({ email: forgotEmail });
+
+    if (result?.success) {
+      setResetSent(true);
+      setFeedbackMessage(result.message);
+      setFeedbackTone('success');
       return;
     }
-    setCreateAccountSuccess(true);
-    setTimeout(() => {
-      setShowCreateAccount(false);
-      setCreateAccountSuccess(false);
-      setCreateAccountData({
-        fullName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: 'student',
-        studentId: '',
-        verificationCode: '',
-      });
-    }, 2000);
+
+    setFeedbackMessage(result?.message || 'Unable to send a reset link right now.');
+    setFeedbackTone('error');
+  };
+
+  const handleCreateAccount = async (event) => {
+    event.preventDefault();
+    setFeedbackMessage('');
+    setFeedbackTone('info');
+
+    if (createAccountData.password !== createAccountData.confirmPassword) {
+      setFeedbackMessage('Passwords do not match.');
+      setFeedbackTone('error');
+      return;
+    }
+
+    const result = await onSignUp({
+      fullName: createAccountData.fullName,
+      email: createAccountData.email,
+      password: createAccountData.password,
+      role: createAccountData.role,
+      studentId: createAccountData.studentId,
+      verificationCode: createAccountData.verificationCode,
+    });
+
+    if (result?.success) {
+      setCreateAccountSuccess(true);
+      setFeedbackMessage(result.message);
+      setFeedbackTone('success');
+      setTimeout(() => {
+        setShowCreateAccount(false);
+        setCreateAccountSuccess(false);
+        setCreateAccountData({
+          fullName: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: 'student',
+          studentId: '',
+          verificationCode: '',
+        });
+        setFeedbackMessage('');
+        setFeedbackTone('info');
+      }, 2000);
+      return;
+    }
+
+    setFeedbackMessage(result?.message || 'Unable to create your account right now.');
+    setFeedbackTone('error');
   };
 
   const updateCreateAccountData = (field, value) => {
@@ -453,6 +485,12 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
             </button>
             <h1>Create your account</h1>
           </div>
+
+          {feedbackMessage && !createAccountSuccess && (
+            <div className={`feedback-banner feedback-banner--${feedbackTone}`}>
+              {feedbackMessage}
+            </div>
+          )}
 
           {createAccountSuccess ? (
             <div className="success-message">
@@ -556,6 +594,11 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
           <div className="modal-card card" onClick={(e) => e.stopPropagation()}>
             <h2>Reset your password</h2>
             <p className="modal-subtitle">Enter your email address and we'll send you a password reset link.</p>
+            {feedbackMessage && (
+              <div className={`feedback-banner feedback-banner--${feedbackTone}`}>
+                {feedbackMessage}
+              </div>
+            )}
             {resetSent ? (
               <div className="reset-success">
                 <div className="check-icon">✓</div>

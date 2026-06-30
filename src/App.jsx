@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
 import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
-import { getSupabaseSession, signInWithEmailPassword, signOutFromSupabase } from './lib/auth';
+import { getSupabaseSession, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword } from './lib/auth';
 import LoginScreenPage from './pages/LoginScreen';
 import DashboardViewPage from './pages/DashboardView';
 import ScholarshipExplorerPage from './pages/ScholarshipExplorer';
@@ -214,6 +214,15 @@ function App() {
     department_chair: 'chair',
   };
 
+  const resolveAccount = (roleValue) => {
+    const normalizedRole = roleValue === 'osa_admin' ? 'osa_admin' : roleValue === 'department_chair' ? 'department_chair' : 'student';
+    return normalizedRole === 'osa_admin'
+      ? demoUsers.admin
+      : normalizedRole === 'department_chair'
+        ? demoUsers.chair
+        : demoUsers.student;
+  };
+
   const currentProfile = demoUsers[roleKeyMap[state.viewerRole] || 'student'];
 
   const themeClass = state.theme === 'light' ? 'theme-light' : '';
@@ -270,18 +279,15 @@ function App() {
 
   const login = async (credentials) => {
     const selectedRole = credentials.role || 'student';
-    const account = selectedRole === 'osa_admin'
-      ? demoUsers.admin
-      : selectedRole === 'department_chair'
-        ? demoUsers.chair
-        : demoUsers.student;
-
     const authResult = await signInWithEmailPassword({
       email: credentials.email,
       password: credentials.password,
     });
 
     if (authResult.success || authResult.fallback) {
+      const resolvedRole = authResult.user?.user_metadata?.role || selectedRole;
+      const account = resolveAccount(resolvedRole);
+
       updateState((previous) => ({
         ...previous,
         isAuthenticated: true,
@@ -309,6 +315,44 @@ function App() {
       success: false,
       fallback: false,
       message: authResult.message || 'Unable to sign in with that email and password.',
+    };
+  };
+
+  const signup = async (credentials) => {
+    const result = await signUpWithEmailPassword({
+      email: credentials.email,
+      password: credentials.password,
+      fullName: credentials.fullName,
+      role: credentials.role,
+      studentId: credentials.studentId,
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: result.message || 'Account created successfully.',
+      };
+    }
+
+    return {
+      success: false,
+      message: result.message || 'Unable to create your account right now.',
+    };
+  };
+
+  const requestPasswordReset = async (credentials) => {
+    const result = await resetPasswordForEmail({ email: credentials.email });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: result.message || 'Password reset link sent.',
+      };
+    }
+
+    return {
+      success: false,
+      message: result.message || 'Unable to send a reset link right now.',
     };
   };
 
@@ -574,6 +618,8 @@ function App() {
     return (
       <LoginScreenPage
         onLogin={login}
+        onSignUp={signup}
+        onForgotPassword={requestPasswordReset}
         rememberedEmail={state.savedEmail}
         rememberedRole={state.savedRole}
         isRemembered={state.rememberMe}
