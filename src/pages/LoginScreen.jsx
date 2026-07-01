@@ -284,11 +284,13 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
   );
 }
 
-export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, isRemembered, theme, onToggleTheme }) {
+export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, rememberedEmail, isRemembered, theme, onToggleTheme }) {
   const [email, setEmail] = useState(rememberedEmail || 'student@addu.edu.ph');
   const [password, setPassword] = useState('password123');
-  const [role, setRole] = useState(rememberedRole || 'student');
   const [rememberMe, setRememberMe] = useState(isRemembered || false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackTone, setFeedbackTone] = useState('info');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
@@ -304,41 +306,87 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
   });
   const [createAccountSuccess, setCreateAccountSuccess] = useState(false);
 
-  const submitLogin = (event) => {
+  const submitLogin = async (event) => {
     event.preventDefault();
-    onLogin({ email, password, role, rememberMe });
+    setIsSubmitting(true);
+    setFeedbackMessage('');
+    setFeedbackTone('info');
+
+    const result = await onLogin({ email, password, rememberMe });
+
+    if (result?.success) {
+      setFeedbackMessage(result.fallback ? 'Signed in using the demo mode fallback.' : 'Signed in successfully.');
+      setFeedbackTone(result.fallback ? 'info' : 'success');
+    } else {
+      setFeedbackMessage(result?.message || 'Unable to sign in. Please check your credentials.');
+      setFeedbackTone('error');
+    }
+
+    setIsSubmitting(false);
   };
 
-  const handleForgotPassword = (event) => {
+  const handleForgotPassword = async (event) => {
     event.preventDefault();
-    setResetSent(true);
-    setTimeout(() => {
-      setShowForgotPassword(false);
-      setResetSent(false);
-      setForgotEmail('');
-    }, 2000);
-  };
+    setFeedbackMessage('');
+    setFeedbackTone('info');
 
-  const handleCreateAccount = (event) => {
-    event.preventDefault();
-    if (createAccountData.password !== createAccountData.confirmPassword) {
-      alert('Passwords do not match');
+    const result = await onForgotPassword({ email: forgotEmail });
+
+    if (result?.success) {
+      setResetSent(true);
+      setFeedbackMessage(result.message);
+      setFeedbackTone('success');
       return;
     }
-    setCreateAccountSuccess(true);
-    setTimeout(() => {
-      setShowCreateAccount(false);
-      setCreateAccountSuccess(false);
-      setCreateAccountData({
-        fullName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: 'student',
-        studentId: '',
-        verificationCode: '',
-      });
-    }, 2000);
+
+    setFeedbackMessage(result?.message || 'Unable to send a reset link right now.');
+    setFeedbackTone('error');
+  };
+
+  const handleCreateAccount = async (event) => {
+    event.preventDefault();
+    setFeedbackMessage('');
+    setFeedbackTone('info');
+
+    if (createAccountData.password !== createAccountData.confirmPassword) {
+      setFeedbackMessage('Passwords do not match.');
+      setFeedbackTone('error');
+      return;
+    }
+
+    const result = await onSignUp({
+      fullName: createAccountData.fullName,
+      email: createAccountData.email,
+      password: createAccountData.password,
+      role: createAccountData.role,
+      studentId: createAccountData.studentId,
+      verificationCode: createAccountData.verificationCode,
+    });
+
+    if (result?.success) {
+      setCreateAccountSuccess(true);
+      setFeedbackMessage(result.message);
+      setFeedbackTone('success');
+      setTimeout(() => {
+        setShowCreateAccount(false);
+        setCreateAccountSuccess(false);
+        setCreateAccountData({
+          fullName: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: 'student',
+          studentId: '',
+          verificationCode: '',
+        });
+        setFeedbackMessage('');
+        setFeedbackTone('info');
+      }, 2000);
+      return;
+    }
+
+    setFeedbackMessage(result?.message || 'Unable to create your account right now.');
+    setFeedbackTone('error');
   };
 
   const updateCreateAccountData = (field, value) => {
@@ -385,7 +433,6 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
           </div>
 
           <form className="login-form" onSubmit={submitLogin}>
-            <RolePicker label="Role" value={role} onChange={setRole} idPrefix="login" />
             <label>
               <span>Email</span>
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="name@addu.edu.ph" />
@@ -401,7 +448,14 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
               </label>
               <button type="button" className="forgot-link" onClick={() => setShowForgotPassword(true)}>Forgot password?</button>
             </div>
-            <button className="primary-btn full-width" type="submit">Sign in</button>
+            {feedbackMessage && (
+              <div className={`feedback-banner feedback-banner--${feedbackTone}`}>
+                {feedbackMessage}
+              </div>
+            )}
+            <button className="primary-btn full-width" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
+            </button>
             <div className="login-divider">
               <span>or</span>
             </div>
@@ -429,6 +483,12 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
             </button>
             <h1>Create your account</h1>
           </div>
+
+          {feedbackMessage && !createAccountSuccess && (
+            <div className={`feedback-banner feedback-banner--${feedbackTone}`}>
+              {feedbackMessage}
+            </div>
+          )}
 
           {createAccountSuccess ? (
             <div className="success-message">
@@ -532,6 +592,11 @@ export default function LoginScreen({ onLogin, rememberedEmail, rememberedRole, 
           <div className="modal-card card" onClick={(e) => e.stopPropagation()}>
             <h2>Reset your password</h2>
             <p className="modal-subtitle">Enter your email address and we'll send you a password reset link.</p>
+            {feedbackMessage && (
+              <div className={`feedback-banner feedback-banner--${feedbackTone}`}>
+                {feedbackMessage}
+              </div>
+            )}
             {resetSent ? (
               <div className="reset-success">
                 <div className="check-icon">✓</div>

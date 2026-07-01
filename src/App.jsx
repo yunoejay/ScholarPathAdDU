@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
 import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
+import { getSupabaseSession, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword } from './lib/auth';
 import LoginScreenPage from './pages/LoginScreen';
 import DashboardViewPage from './pages/DashboardView';
 import ScholarshipExplorerPage from './pages/ScholarshipExplorer';
@@ -172,10 +173,69 @@ function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (isBooting) {
+      return undefined;
+    }
+
+    let active = true;
+
+    const hydrateSession = async () => {
+      const result = await getSupabaseSession();
+      if (!active || !result.session) {
+        return;
+      }
+
+      const user = result.session.user;
+      const resolvedRole = normalizeRole(user.user_metadata?.role);
+      const account = resolveAccount(resolvedRole);
+
+      updateState((previous) => ({
+        ...previous,
+        isAuthenticated: true,
+        viewerRole: account.role,
+        activeView: 'dashboard',
+        authUser: {
+          id: user.id,
+          email: user.email,
+          role: account.role,
+          fullName: user.user_metadata?.full_name || account.fullName || user.email || 'Signed in user',
+        },
+      }));
+    };
+
+    hydrateSession();
+
+    return () => {
+      active = false;
+    };
+  }, [isBooting]);
+
   const roleKeyMap = {
     student: 'student',
     osa_admin: 'admin',
     department_chair: 'chair',
+  };
+
+  const normalizeRole = (roleValue) => {
+    if (roleValue === 'osa_admin') {
+      return 'osa_admin';
+    }
+
+    if (roleValue === 'department_chair') {
+      return 'department_chair';
+    }
+
+    return 'student';
+  };
+
+  const resolveAccount = (roleValue) => {
+    const normalizedRole = normalizeRole(roleValue);
+    return normalizedRole === 'osa_admin'
+      ? demoUsers.admin
+      : normalizedRole === 'department_chair'
+        ? demoUsers.chair
+        : demoUsers.student;
   };
 
   const currentProfile = demoUsers[roleKeyMap[state.viewerRole] || 'student'];
@@ -232,31 +292,86 @@ function App() {
 
   const navigate = (view) => updateState({ activeView: view });
 
-  const login = (credentials) => {
-    const selectedRole = credentials.role || 'student';
-    const account = selectedRole === 'osa_admin'
-      ? demoUsers.admin
-      : selectedRole === 'department_chair'
-        ? demoUsers.chair
-        : demoUsers.student;
+  const login = async (credentials) => {
+    const authResult = await signInWithEmailPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
 
-    updateState((previous) => ({
-      ...previous,
-      isAuthenticated: true,
-      viewerRole: account.role,
-      activeView: 'dashboard',
-      authUser: {
-        email: credentials.email,
-        role: account.role,
-        fullName: account.fullName,
-      },
-      rememberMe: credentials.rememberMe || false,
-      savedEmail: credentials.rememberMe ? credentials.email : previous.savedEmail,
-      savedRole: credentials.rememberMe ? account.role : previous.savedRole,
-    }));
+    if (authResult.success || authResult.fallback) {
+      const resolvedRole = normalizeRole(authResult.user?.user_metadata?.role || credentials.role || 'student');
+      const account = resolveAccount(resolvedRole);
+
+      updateState((previous) => ({
+        ...previous,
+        isAuthenticated: true,
+        viewerRole: account.role,
+        activeView: 'dashboard',
+        authUser: {
+          id: authResult.user?.id || account.id,
+          email: credentials.email,
+          role: account.role,
+          fullName: authResult.user?.user_metadata?.full_name || account.fullName,
+        },
+        rememberMe: credentials.rememberMe || false,
+        savedEmail: credentials.rememberMe ? credentials.email : previous.savedEmail,
+        savedRole: credentials.rememberMe ? account.role : previous.savedRole,
+      }));
+
+      return {
+        success: true,
+        fallback: authResult.fallback,
+        message: authResult.message,
+      };
+    }
+
+    return {
+      success: false,
+      fallback: false,
+      message: authResult.message || 'Unable to sign in with that email and password.',
+    };
   };
 
-  const logout = () => {
+  const signup = async (credentials) => {
+    const result = await signUpWithEmailPassword({
+      email: credentials.email,
+      password: credentials.password,
+      fullName: credentials.fullName,
+      role: credentials.role,
+      studentId: credentials.studentId,
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: result.message || 'Account created successfully.',
+      };
+    }
+
+    return {
+      success: false,
+      message: result.message || 'Unable to create your account right now.',
+    };
+  };
+
+  const requestPasswordReset = async (credentials) => {
+    const result = await resetPasswordForEmail({ email: credentials.email });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: result.message || 'Password reset link sent.',
+      };
+    }
+
+    return {
+      success: false,
+      message: result.message || 'Unable to send a reset link right now.',
+    };
+  };
+
+  const logout = async () => {
+    await signOutFromSupabase();
     updateState((previous) => ({
       ...previous,
       isAuthenticated: false,
@@ -517,6 +632,8 @@ function App() {
     return (
       <LoginScreenPage
         onLogin={login}
+        onSignUp={signup}
+        onForgotPassword={requestPasswordReset}
         rememberedEmail={state.savedEmail}
         rememberedRole={state.savedRole}
         isRemembered={state.rememberMe}
