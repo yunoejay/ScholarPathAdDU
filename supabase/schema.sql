@@ -1,5 +1,19 @@
 create extension if not exists "pgcrypto";
 
+-- Minimal profiles table (no trigger - app handles profile creation)
+create table if not exists profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  role text default 'student',
+  email text,
+  created_at timestamptz not null default now()
+);
+
+alter table profiles enable row level security;
+
+create policy "profiles_self_read_write" on profiles
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 create table if not exists scholarships (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -87,15 +101,19 @@ alter table announcements enable row level security;
 alter table notifications enable row level security;
 alter table department_reviews enable row level security;
 
+drop policy if exists "scholarships_read_all" on scholarships;
 create policy "scholarships_read_all" on scholarships
 for select using (true);
 
+drop policy if exists "documents_self_access" on documents;
 create policy "documents_self_access" on documents
 for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 
+drop policy if exists "applications_self_access" on applications;
 create policy "applications_self_access" on applications
 for all using (auth.uid() = student_id) with check (auth.uid() = student_id);
 
+drop policy if exists "application_documents_self_access" on application_documents;
 create policy "application_documents_self_access" on application_documents
 for all using (
   exists (
@@ -107,11 +125,14 @@ for all using (
   )
 );
 
+drop policy if exists "announcements_read_all" on announcements;
 create policy "announcements_read_all" on announcements
 for select using (true);
 
+drop policy if exists "notifications_self_access" on notifications;
 create policy "notifications_self_access" on notifications
 for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
 
+drop policy if exists "department_reviews_restricted" on department_reviews;
 create policy "department_reviews_restricted" on department_reviews
 for select using (auth.uid() = reviewer_id);
