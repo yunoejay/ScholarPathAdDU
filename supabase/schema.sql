@@ -1,21 +1,5 @@
 create extension if not exists "pgcrypto";
 
-create table if not exists profiles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique,
-  full_name text not null,
-  role text not null check (role in ('student', 'osa_admin', 'department_chair')),
-  email text,
-  phone text,
-  department text,
-  degree_program text,
-  qpi numeric(3, 2),
-  household_income numeric(12, 2),
-  has_active_government_grant boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
 create table if not exists scholarships (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -95,7 +79,6 @@ create table if not exists department_reviews (
   created_at timestamptz not null default now()
 );
 
-alter table profiles enable row level security;
 alter table scholarships enable row level security;
 alter table documents enable row level security;
 alter table applications enable row level security;
@@ -104,15 +87,15 @@ alter table announcements enable row level security;
 alter table notifications enable row level security;
 alter table department_reviews enable row level security;
 
-create policy "profiles_self_read_write" on profiles
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
 create policy "scholarships_read_all" on scholarships
 for select using (true);
+
 create policy "documents_self_access" on documents
 for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+
 create policy "applications_self_access" on applications
 for all using (auth.uid() = student_id) with check (auth.uid() = student_id);
+
 create policy "application_documents_self_access" on application_documents
 for all using (
   exists (
@@ -123,9 +106,12 @@ for all using (
     select 1 from applications a where a.id = application_id and a.student_id = auth.uid()
   )
 );
+
 create policy "announcements_read_all" on announcements
 for select using (true);
+
 create policy "notifications_self_access" on notifications
 for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
+
 create policy "department_reviews_restricted" on department_reviews
 for select using (auth.uid() = reviewer_id);

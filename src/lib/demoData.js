@@ -8,15 +8,62 @@ const dateFromToday = (days) => {
 export const degreePrograms = [
   'BS Computer Science',
   'BS Information Technology',
+  'BS Information Systems',
   'BS Business Administration',
   'BS Accountancy',
   'BS Psychology',
   'BS Civil Engineering',
+  'BS Electrical Engineering',
+  'BS Electronics Engineering',
+  'BS Mechanical Engineering',
+  'BS Industrial Engineering',
   'BS Nursing',
   'BA Communication',
   'BS Biology',
+  'BS Nutrition-Dietetics',
+  'BS Hospitality Management',
+  'BS Architecture',
+  'BS Criminology',
+  'BS Public Administration',
+  'BS Philosophy',
   'BS Education',
 ];
+
+// Map degree programs to their respective school/college at AdDU
+export const degreeToSchoolMap = {
+  // College of Computer Studies
+  'BS Computer Science': 'College of Computer Studies (CCS)',
+  'BS Information Technology': 'College of Computer Studies (CCS)',
+  'BS Information Systems': 'College of Computer Studies (CCS)',
+
+  // School of Nursing
+  'BS Nursing': 'School of Nursing (SON)',
+
+  // School of Engineering and Architecture
+  'BS Civil Engineering': 'School of Engineering and Architecture (SEA)',
+  'BS Electrical Engineering': 'School of Engineering and Architecture (SEA)',
+  'BS Electronics Engineering': 'School of Engineering and Architecture (SEA)',
+  'BS Mechanical Engineering': 'School of Engineering and Architecture (SEA)',
+  'BS Industrial Engineering': 'School of Engineering and Architecture (SEA)',
+  'BS Architecture': 'School of Engineering and Architecture (SEA)',
+
+  // College of Business
+  'BS Business Administration': 'College of Business (COB)',
+  'BS Accountancy': 'College of Business (COB)',
+
+  // School of Health Professions
+  'BS Nutrition-Dietetics': 'School of Health Professions (SHP)',
+  'BS Hospitality Management': 'School of Health Professions (SHP)',
+
+  // College of Arts and Sciences / Other
+  'BS Psychology': 'College of Arts and Sciences (CAS)',
+  'BS Biology': 'College of Arts and Sciences (CAS)',
+  'BA Communication': 'College of Arts and Sciences (CAS)',
+  'BS Criminology': 'College of Arts and Sciences (CAS)',
+  'BS Public Administration': 'College of Arts and Sciences (CAS)',
+  'BS Philosophy': 'College of Arts and Sciences (CAS)',
+  'BS Education': 'College of Arts and Sciences (CAS)',
+};
 
 const namedScholarships = [
   {

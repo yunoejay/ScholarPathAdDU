@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import bgImage from '../../pictures/picture1.png';
 import logoImage from '../../pictures/logo.png';
+import { signInWithGoogle } from '../lib/auth';
 
 const roleOptions = [
   { value: 'student', label: 'Student' },
@@ -287,11 +288,13 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
 export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, rememberedEmail, isRemembered, theme, onToggleTheme }) {
   const [email, setEmail] = useState(rememberedEmail || 'student@addu.edu.ph');
   const [password, setPassword] = useState('password123');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(isRemembered || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackTone, setFeedbackTone] = useState('info');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
@@ -363,6 +366,8 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
       verificationCode: createAccountData.verificationCode,
     });
 
+    console.log('handleCreateAccount - result:', result);
+
     if (result?.success) {
       setCreateAccountSuccess(true);
       setFeedbackMessage(result.message);
@@ -385,13 +390,51 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
       return;
     }
 
-    setFeedbackMessage(result?.message || 'Unable to create your account right now.');
+    const errorMsg = result?.message || 'Unable to create your account right now.';
+    console.error('handleCreateAccount - error:', errorMsg);
+    setFeedbackMessage(errorMsg);
     setFeedbackTone('error');
   };
 
-  const updateCreateAccountData = (field, value) => {
-    setCreateAccountData(prev => ({ ...prev, [field]: value }));
-  };
+   const updateCreateAccountData = (field, value) => {
+     setCreateAccountData(prev => ({ ...prev, [field]: value }));
+   };
+
+   const handleGoogleSignIn = async () => {
+     setIsGoogleLoading(true);
+     setFeedbackMessage('');
+     setFeedbackTone('info');
+
+     const result = await signInWithGoogle();
+
+     if (result?.success && result?.fallback) {
+       setFeedbackMessage(
+         result?.message?.includes('not configured')
+           ? 'Google Sign-In requires Supabase configuration. Please add your Supabase credentials to enable OAuth. Contact your administrator to set up Google OAuth provider in the Supabase dashboard.'
+           : 'Google Sign-In is currently unavailable. Please try email sign-in instead.'
+       );
+       setFeedbackTone('info');
+     } else if (result?.success) {
+       setFeedbackMessage('Redirecting to Google sign-in...');
+       setFeedbackTone('success');
+     } else {
+       const errorMsg = result?.message || 'Unable to sign in with Google.';
+       if (errorMsg.includes('provider') || errorMsg.includes('enabled')) {
+         setFeedbackMessage(
+           'Google Sign-In is not yet configured. Your administrator needs to enable the Google provider in the Supabase Authentication settings. You can still sign in with your email and password.'
+         );
+       } else {
+         setFeedbackMessage(errorMsg);
+       }
+       setFeedbackTone('error');
+     }
+
+     setIsGoogleLoading(false);
+   };
+
+   const togglePasswordVisibility = () => {
+     setShowPassword((prev) => !prev);
+   };
 
   return (
     <div className="login-screen" style={{ '--login-bg': `url(${bgImage})` }}>
@@ -437,10 +480,39 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
               <span>Email</span>
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="name@addu.edu.ph" />
             </label>
-            <label>
-              <span>Password</span>
-              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Enter password" />
-            </label>
+             <label className="password-field-wrapper">
+               <span>Password</span>
+               <div className="password-input-container">
+                 <input
+                   value={password}
+                   onChange={(event) => setPassword(event.target.value)}
+                   type={showPassword ? 'text' : 'password'}
+                   placeholder="Enter password"
+                   id="login-password-input"
+                 />
+                 <button
+                   type="button"
+                   className="password-toggle-btn"
+                   onClick={togglePasswordVisibility}
+                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                   title={showPassword ? 'Hide password' : 'Show password'}
+                   tabIndex={-1}
+                 >
+                   {showPassword ? (
+                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                       <line x1="1" y1="1" x2="23" y2="23" />
+                     </svg>
+                   ) : (
+                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                       <circle cx="12" cy="12" r="3" />
+                     </svg>
+                   )}
+                 </button>
+               </div>
+             </label>
             <div className="login-remember-row">
               <label className="checkbox-label">
                 <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
@@ -456,18 +528,33 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
             <button className="primary-btn full-width" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
-            <div className="login-divider">
-              <span>or</span>
-            </div>
-            <button type="button" className="google-btn full-width">
-              <svg viewBox="0 0 24 24" className="google-icon" fill="currentColor">
+             <div className="login-divider">
+               <span>or</span>
+             </div>
+             <button
+               type="button"
+               className={`google-btn full-width ${isGoogleLoading ? 'is-loading' : ''}`}
+               onClick={handleGoogleSignIn}
+               disabled={isGoogleLoading}
+             >
+               {isGoogleLoading ? (
+                 <span className="google-btn-loader">
+                   <svg viewBox="0 0 50 50" className="spinner-icon">
+                     <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" strokeWidth="4" />
+                   </svg>
+                   Signing in...
+                 </span>
+               ) : (
+                 <>
+                   <svg viewBox="0 0 24 24" className="google-icon" fill="currentColor">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#1f2937"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34a853"/>
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#fbbc05"/>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#ea4335"/>
               </svg>
-              Sign in with Google
-            </button>
+                 </>
+               )}
+             </button>
             <div className="login-divider">
               <span>or</span>
             </div>

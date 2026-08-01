@@ -187,19 +187,16 @@ function App() {
       }
 
       const user = result.session.user;
-      const resolvedRole = normalizeRole(user.user_metadata?.role);
-      const account = resolveAccount(resolvedRole);
-
       updateState((previous) => ({
         ...previous,
         isAuthenticated: true,
-        viewerRole: account.role,
+        viewerRole: 'student',
         activeView: 'dashboard',
         authUser: {
           id: user.id,
           email: user.email,
-          role: account.role,
-          fullName: user.user_metadata?.full_name || account.fullName || user.email || 'Signed in user',
+          role: 'student',
+          fullName: user.user_metadata?.full_name || user.email || 'Signed in user',
         },
       }));
     };
@@ -217,20 +214,8 @@ function App() {
     department_chair: 'chair',
   };
 
-  const normalizeRole = (roleValue) => {
-    if (roleValue === 'osa_admin') {
-      return 'osa_admin';
-    }
-
-    if (roleValue === 'department_chair') {
-      return 'department_chair';
-    }
-
-    return 'student';
-  };
-
   const resolveAccount = (roleValue) => {
-    const normalizedRole = normalizeRole(roleValue);
+    const normalizedRole = roleValue === 'osa_admin' ? 'osa_admin' : roleValue === 'department_chair' ? 'department_chair' : 'student';
     return normalizedRole === 'osa_admin'
       ? demoUsers.admin
       : normalizedRole === 'department_chair'
@@ -293,13 +278,14 @@ function App() {
   const navigate = (view) => updateState({ activeView: view });
 
   const login = async (credentials) => {
+    const selectedRole = credentials.role || 'student';
     const authResult = await signInWithEmailPassword({
       email: credentials.email,
       password: credentials.password,
     });
 
     if (authResult.success || authResult.fallback) {
-      const resolvedRole = normalizeRole(authResult.user?.user_metadata?.role || credentials.role || 'student');
+      const resolvedRole = authResult.user?.user_metadata?.role || selectedRole;
       const account = resolveAccount(resolvedRole);
 
       updateState((previous) => ({

@@ -15,15 +15,10 @@ export const signInWithEmailPassword = async ({ email, password }) => {
   });
 
   if (error) {
-    const normalizedMessage = (error.message || '').toLowerCase();
-    const isEmailConfirmationIssue = normalizedMessage.includes('confirm') && normalizedMessage.includes('email');
-
     return {
       success: false,
       fallback: false,
-      message: isEmailConfirmationIssue
-        ? 'Please confirm your email before signing in. Check your inbox for the confirmation link.'
-        : error.message,
+      message: error.message,
     };
   }
 
