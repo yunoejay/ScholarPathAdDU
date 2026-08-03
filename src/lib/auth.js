@@ -1,5 +1,20 @@
 import { hasSupabaseConfig, supabase } from './supabaseClient';
 
+const getAuthErrorMessage = (error, fallbackMessage) => {
+  if (!error) return fallbackMessage;
+  if (typeof error === 'string') return error;
+  if (error.message) return error.message;
+  if (error.error_description) return error.error_description;
+  if (error.msg) return error.msg;
+
+  try {
+    const serialized = JSON.stringify(error);
+    return serialized && serialized !== '{}' ? serialized : fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+};
+
 export const signInWithEmailPassword = async ({ email, password }) => {
   if (!hasSupabaseConfig || !supabase) {
     return {
@@ -9,25 +24,20 @@ export const signInWithEmailPassword = async ({ email, password }) => {
     };
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-  if (error) {
-    return {
-      success: false,
-      fallback: false,
-      message: error.message,
-    };
+    if (error) {
+      return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to sign in.') };
+    }
+
+    return { success: true, fallback: false, user: data.user, session: data.session };
+  } catch (error) {
+    return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to sign in.') };
   }
-
-  return {
-    success: true,
-    fallback: false,
-    user: data.user,
-    session: data.session,
-  };
 };
 
 export const signUpWithEmailPassword = async ({ email, password, fullName, role, studentId }) => {
@@ -39,35 +49,33 @@ export const signUpWithEmailPassword = async ({ email, password, fullName, role,
     };
   }
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName,
-        role,
-        student_id: studentId || null,
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          full_name: fullName.trim(),
+          role,
+          student_id: studentId?.trim() || null,
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
+    if (error) {
+      return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to create your account.') };
+    }
+
     return {
-      success: false,
+      success: true,
       fallback: false,
-      message: error.message,
+      user: data.user,
+      session: data.session,
+      message: data.session ? 'Account created successfully.' : 'Account created. Please confirm your email before signing in.',
     };
+  } catch (error) {
+    return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to create your account.') };
   }
-
-  return {
-    success: true,
-    fallback: false,
-    user: data.user,
-    session: data.session,
-    message: data.session
-      ? 'Account created successfully.'
-      : 'Account created. Please confirm your email before signing in.',
-  };
 };
 
 export const resetPasswordForEmail = async ({ email }) => {
@@ -80,13 +88,18 @@ export const resetPasswordForEmail = async ({ email }) => {
   }
 
   const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
-  const { error } = await supabase.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
+  let error;
+  try {
+    ({ error } = await supabase.auth.resetPasswordForEmail(email.trim(), redirectTo ? { redirectTo } : undefined));
+  } catch (caughtError) {
+    return { success: false, fallback: false, message: getAuthErrorMessage(caughtError, 'Unable to send a reset link.') };
+  }
 
   if (error) {
     return {
       success: false,
       fallback: false,
-      message: error.message,
+      message: getAuthErrorMessage(error, 'Unable to send a reset link.'),
     };
   }
 
@@ -143,4 +156,31 @@ export const getSupabaseSession = async () => {
     session,
     fallback: false,
   };
+};
+
+export const signInWithGoogle = async () => {
+  if (!hasSupabaseConfig || !supabase) {
+    return {
+      success: false,
+      fallback: true,
+      message: 'Supabase is not configured. Falling back to demo mode.',
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to sign in with Google.') };
+    }
+
+    return { success: true, fallback: false, user: data.user, session: data.session, url: data.url };
+  } catch (error) {
+    return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to sign in with Google.') };
+  }
 };

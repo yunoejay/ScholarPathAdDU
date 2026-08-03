@@ -1,18 +1,51 @@
 create extension if not exists "pgcrypto";
 
--- Minimal profiles table (no trigger - app handles profile creation)
 create table if not exists profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  full_name text,
-  role text default 'student',
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique,
+  full_name text not null,
+  role text not null check (role in ('student', 'osa_admin', 'department_chair')),
   email text,
-  created_at timestamptz not null default now()
+  phone text,
+  department text,
+  degree_program text,
+  qpi numeric(3, 2),
+  household_income numeric(12, 2),
+  has_active_government_grant boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-alter table profiles enable row level security;
+-- Create the application profile in the same transaction as the Auth user.
+-- This also supports users created from Authentication > Users in Supabase.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, full_name, role, email)
+  values (
+    new.id,
+    coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), split_part(coalesce(new.email, ''), '@', 1), 'ScholarPath user'),
+    case
+      when new.raw_user_meta_data ->> 'role' in ('student', 'osa_admin', 'department_chair')
+        then new.raw_user_meta_data ->> 'role'
+      else 'student'
+    end,
+    new.email
+  )
+  on conflict (user_id) do update set
+    email = excluded.email,
+    updated_at = now();
+  return new;
+end;
+$$;
 
-create policy "profiles_self_read_write" on profiles
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 create table if not exists scholarships (
   id uuid primary key default gen_random_uuid(),
@@ -93,6 +126,7 @@ create table if not exists department_reviews (
   created_at timestamptz not null default now()
 );
 
+alter table profiles enable row level security;
 alter table scholarships enable row level security;
 alter table documents enable row level security;
 alter table applications enable row level security;
@@ -100,6 +134,10 @@ alter table application_documents enable row level security;
 alter table announcements enable row level security;
 alter table notifications enable row level security;
 alter table department_reviews enable row level security;
+
+drop policy if exists "profiles_self_read_write" on profiles;
+create policy "profiles_self_read_write" on profiles
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "scholarships_read_all" on scholarships;
 create policy "scholarships_read_all" on scholarships
