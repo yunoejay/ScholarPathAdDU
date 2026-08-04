@@ -238,7 +238,7 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
   };
 
   return (
-    <div className="field-group select-picker" ref={pickerRef} onKeyDown={handleKeyDown}>
+    <div className={`field-group select-picker ${open ? 'is-open' : ''}`} ref={pickerRef} onKeyDown={handleKeyDown}>
       <span>{label}</span>
       <button
         type="button"
@@ -286,8 +286,8 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
 }
 
 export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, rememberedEmail, isRemembered, theme, onToggleTheme }) {
-  const [email, setEmail] = useState(rememberedEmail || 'student@addu.edu.ph');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState(rememberedEmail || '');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(isRemembered || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -350,12 +350,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
     event.preventDefault();
     setFeedbackMessage('');
     setFeedbackTone('info');
-
-    if (createAccountData.password !== createAccountData.confirmPassword) {
-      setFeedbackMessage('Passwords do not match.');
-      setFeedbackTone('error');
-      return;
-    }
 
     const result = await onSignUp({
       fullName: createAccountData.fullName,
@@ -478,7 +472,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
           <form className="login-form" onSubmit={submitLogin}>
             <label>
               <span>Email</span>
-              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="name@addu.edu.ph" />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="AdDU Email" />
             </label>
              <label className="password-field-wrapper">
                <span>Password</span>
@@ -487,7 +481,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                    value={password}
                    onChange={(event) => setPassword(event.target.value)}
                    type={showPassword ? 'text' : 'password'}
-                   placeholder="Enter password"
+                   placeholder="Password"
                    id="login-password-input"
                  />
                  <button
@@ -518,7 +512,12 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                 <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
                 <span>Remember me</span>
               </label>
-              <button type="button" className="forgot-link" onClick={() => setShowForgotPassword(true)}>Forgot password?</button>
+              <button type="button" className="forgot-link" onClick={() => {
+                setFeedbackMessage('');
+                setFeedbackTone('info');
+                setResetSent(false);
+                setShowForgotPassword(true);
+              }}>Forgot password?</button>
             </div>
             {feedbackMessage && (
               <div className={`feedback-banner feedback-banner--${feedbackTone}`}>
@@ -558,14 +557,22 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
             <div className="login-divider">
               <span>or</span>
             </div>
-            <button type="button" className="secondary-btn full-width" onClick={() => setShowCreateAccount(true)}>Create account</button>
+            <button type="button" className="secondary-btn full-width" onClick={() => {
+              setFeedbackMessage('');
+              setFeedbackTone('info');
+              setShowCreateAccount(true);
+            }}>Create account</button>
             <p className="login-note">Sign in with your Ateneo account.</p>
           </form>
         </section>
       ) : (
         <section className="login-card card create-account-view">
           <div className="create-account-header">
-            <button type="button" className="back-btn" onClick={() => setShowCreateAccount(false)} title="Back to sign in">
+            <button type="button" className="back-btn" onClick={() => {
+              setFeedbackMessage('');
+              setFeedbackTone('info');
+              setShowCreateAccount(false);
+            }} title="Back to sign in">
               ← Back
             </button>
             <h1>Create your account</h1>
@@ -614,7 +621,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                   type="email"
                   value={createAccountData.email}
                   onChange={(e) => updateCreateAccountData('email', e.target.value)}
-                  placeholder="name@addu.edu.ph"
+                  placeholder="AdDU Email"
                   required
                 />
               </label>
@@ -624,18 +631,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                 onChange={(nextRole) => updateCreateAccountData('role', nextRole)}
                 idPrefix="create-account"
               />
-              {createAccountData.role === 'student' && (
-                <label>
-                  <span>Student ID</span>
-                  <input
-                    type="text"
-                    value={createAccountData.studentId}
-                    onChange={(e) => updateCreateAccountData('studentId', e.target.value)}
-                    placeholder="e.g., 123456"
-                    required
-                  />
-                </label>
-              )}
               {createAccountData.role !== 'student' && (
                 <label>
                   <span>Verification Code</span>
@@ -654,7 +649,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                   type="password"
                   value={createAccountData.password}
                   onChange={(e) => updateCreateAccountData('password', e.target.value)}
-                  placeholder="Enter password"
+                  placeholder="Password"
                   required
                 />
               </label>
@@ -669,7 +664,11 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                 />
               </label>
               <button className="primary-btn full-width" type="submit">Create account</button>
-              <button type="button" className="secondary-btn full-width" onClick={() => setShowCreateAccount(false)}>Back to sign in</button>
+              <button type="button" className="secondary-btn full-width" onClick={() => {
+                setFeedbackMessage('');
+                setFeedbackTone('info');
+                setShowCreateAccount(false);
+              }}>Back to sign in</button>
             </form>
           )}
         </section>
@@ -698,12 +697,17 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                     type="email"
                     value={forgotEmail}
                     onChange={(event) => setForgotEmail(event.target.value)}
-                    placeholder="name@addu.edu.ph"
+                    placeholder="AdDU Email"
                     required
                   />
                 </label>
                 <div className="modal-actions">
-                  <button type="button" className="secondary-btn" onClick={() => setShowForgotPassword(false)}>Cancel</button>
+              <button type="button" className="forgot-link" onClick={() => {
+                setFeedbackMessage('');
+                setFeedbackTone('info');
+                setResetSent(false);
+                setShowForgotPassword(true);
+              }}>Forgot password?</button>
                   <button type="submit" className="primary-btn" disabled={!forgotEmail}>Send reset link</button>
                 </div>
               </form>

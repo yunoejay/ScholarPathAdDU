@@ -287,6 +287,7 @@ textarea:focus {
   gap: 0.95rem;
   align-content: center;
   padding: 1rem;
+  min-width: 0;
 }
 
 .login-form label {
@@ -348,14 +349,32 @@ textarea:focus {
   cursor: pointer;
 }
 
+.login-form .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: 100%;
+}
+
 .checkbox-label input {
   cursor: pointer;
   accent-color: var(--primary);
 }
 
+.login-form .checkbox-label input {
+  width: auto;
+  flex-shrink: 0;
+}
+
 .checkbox-label span {
   font-size: 0.9rem;
   color: var(--text);
+}
+
+.login-form .checkbox-label span {
+  white-space: nowrap;
 }
 
 /* Profile setup checkbox - override global styles */
@@ -539,6 +558,21 @@ textarea:focus {
   position: relative;
 }
 
+/* Keep explorer filter menus above the scholarship-card stacking contexts. */
+.filter-bar {
+  position: relative;
+  z-index: 30;
+}
+
+.filter-bar .select-picker.is-open {
+  z-index: 31;
+}
+
+.catalog-grid {
+  position: relative;
+  z-index: 1;
+}
+
 .select-picker-trigger {
   display: flex;
   align-items: center;
@@ -577,10 +611,15 @@ textarea:focus {
   left: 0;
   width: min(100%, 21rem);
   top: calc(100% + 0.45rem);
+  max-height: min(60vh, 26rem);
   z-index: 20;
   display: grid;
   gap: 0.45rem;
   padding: 0.6rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface) 96%, transparent 4%);
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -764,11 +803,13 @@ textarea:focus {
   background: rgba(0, 0, 0, 0.6);
   z-index: 1000;
   padding: 1.25rem;
+  overflow-y: auto;
 }
 
 .modal-card {
   width: min(420px, 100%);
   padding: 1.75rem;
+  min-width: 0;
 }
 
 .modal-card.create-account-card {
@@ -782,6 +823,51 @@ textarea:focus {
   grid-template-columns: 1fr;
   gap: 1.25rem;
   padding: 1.5rem;
+  max-height: calc(100vh - 2.5rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.feedback-banner {
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.feedback-banner--error {
+  color: #fecdd3;
+  background: rgba(225, 29, 72, 0.14);
+  border-color: rgba(251, 113, 133, 0.35);
+}
+
+.feedback-banner--success {
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.feedback-banner--info {
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.theme-light .feedback-banner--error {
+  color: #9f1239;
+  background: rgba(225, 29, 72, 0.08);
+}
+
+.theme-light .feedback-banner--success {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .create-account-header {
@@ -2777,3 +2863,46 @@ input:checked + .slider:before {
   }
 }
 
+
+/* AdDU academic profile onboarding */
+.academic-profile-modal {
+  width: min(540px, 100%);
+  padding: 2rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 38%), var(--surface);
+  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.28);
+}
+.academic-profile-topline { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.academic-profile-icon { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: .35rem; border-radius: 14px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent); box-shadow: 0 10px 22px color-mix(in srgb, var(--primary) 18%, transparent); flex-shrink: 0; }
+.academic-profile-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.academic-profile-modal h2 { font-size: clamp(1.55rem, 4vw, 2rem); letter-spacing: -.03em; }
+.academic-profile-modal .modal-subtitle { line-height: 1.65; color: var(--muted); }
+.academic-profile-modal .modal-form { gap: 1rem; margin-top: 1.35rem; }
+.academic-profile-modal .modal-form label { gap: .45rem; }
+.academic-profile-modal .modal-form input, .academic-profile-modal .modal-form select { min-height: 48px; border-radius: 12px; }
+.academic-profile-modal .academic-profile-grant-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem .65rem; width: 100%; }
+.academic-profile-modal .academic-profile-grant-toggle input { min-height: auto; width: auto; flex: 0 0 auto; accent-color: var(--primary); }
+.academic-profile-modal .academic-profile-grant-toggle > span { flex: 1 1 auto; min-width: 0; line-height: 1.4; }
+.academic-profile-modal .academic-profile-grant-hint { display: block; margin-top: -.5rem; }
+.eligibility-actions {
+  display: grid;
+  gap: .75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.temporary-profile-note {
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+
+.temporary-profile-note--active {
+  color: var(--accent);
+}
+
+.field-hint { color: var(--muted); font-size: .78rem; line-height: 1.4; }
+.academic-department-preview { padding: .85rem 1rem; border-radius: 14px; background: color-mix(in srgb, var(--primary) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent); }
+.academic-department-preview span { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+.academic-department-preview strong { color: var(--primary); }

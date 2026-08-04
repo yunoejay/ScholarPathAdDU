@@ -31,7 +31,6 @@ export const degreePrograms = [
 
 // Map degree programs to their respective school/college at AdDU
 export const degreeToSchoolMap = {
-  // College of Computer Studies
   'BS Computer Science': 'College of Computer Studies (CCS)',
   'BS Information Technology': 'College of Computer Studies (CCS)',
   'BS Information Systems': 'College of Computer Studies (CCS)',

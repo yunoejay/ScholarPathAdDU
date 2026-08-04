@@ -158,6 +158,50 @@ export const getSupabaseSession = async () => {
   };
 };
 
+export const getUserProfile = async (userId) => {
+  if (!hasSupabaseConfig || !supabase || !userId) return { profile: null, fallback: true };
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name, role, email, department, degree_program, student_number, qpi, household_income, has_active_government_grant')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) return { profile: null, fallback: false, message: getAuthErrorMessage(error, 'Unable to load your profile.') };
+    return { profile: data, fallback: false };
+  } catch (error) {
+    return { profile: null, fallback: false, message: getAuthErrorMessage(error, 'Unable to load your profile.') };
+  }
+};
+
+const getCurrentAcademicYear = (date = new Date()) => {
+  const year = date.getFullYear();
+  const startYear = date.getMonth() >= 5 ? year : year - 1;
+  return `${startYear}-${startYear + 1}`;
+};
+
+export const updateUserProfile = async (userId, { degreeProgram, department, studentNumber, qpi, householdIncome, hasActiveGovernmentGrant }) => {
+  if (!hasSupabaseConfig || !supabase || !userId) return { success: true, fallback: true };
+
+  try {
+    const { error: historyError } = await supabase
+      .from('annual_qpi_records')
+      .upsert({ user_id: userId, academic_year: getCurrentAcademicYear(), qpi }, { onConflict: 'user_id,academic_year' });
+    if (historyError) return { success: false, fallback: false, message: getAuthErrorMessage(historyError, 'Unable to save your annual QPI record.') };
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ degree_program: degreeProgram, department, student_number: studentNumber, qpi, household_income: householdIncome, has_active_government_grant: Boolean(hasActiveGovernmentGrant), updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .select('full_name, role, email, department, degree_program, student_number, qpi, household_income, has_active_government_grant')
+      .single();
+    if (error) return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to save your academic profile.') };
+    return { success: true, fallback: false, profile: data };
+  } catch (error) {
+    return { success: false, fallback: false, message: getAuthErrorMessage(error, 'Unable to save your academic profile.') };
+  }
+};
+
 export const signInWithGoogle = async () => {
   if (!hasSupabaseConfig || !supabase) {
     return {
@@ -172,6 +216,10 @@ export const signInWithGoogle = async () => {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          hd: 'addu.edu.ph',
+          prompt: 'select_account',
+        },
       },
     });
 

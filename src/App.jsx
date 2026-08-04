@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
 import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
-import { getSupabaseSession, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword } from './lib/auth';
+import { getAcademicProgram } from './lib/academicPrograms';
+import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
+import AcademicProfileModal from './components/AcademicProfileModal';
 import LoginScreenPage from './pages/LoginScreen';
 import DashboardViewPage from './pages/DashboardView';
 import ScholarshipExplorerPage from './pages/ScholarshipExplorer';
@@ -154,6 +156,9 @@ function App() {
   const [state, setState] = useState(createInitialState);
   // theme: 'dark' | 'light' — persisted in state
   const [isBooting, setIsBooting] = useState(true);
+  const [profileOnboarding, setProfileOnboarding] = useState(null);
+  const [profileSaveError, setProfileSaveError] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     window.localStorage.setItem(storageKey, JSON.stringify(state));
@@ -187,18 +192,33 @@ function App() {
       }
 
       const user = result.session.user;
+      const profileResult = await getUserProfile(user.id);
+      const profile = profileResult.profile;
+      const userRole = profile?.role || user.user_metadata?.role || 'student';
       updateState((previous) => ({
         ...previous,
         isAuthenticated: true,
-        viewerRole: 'student',
+        viewerRole: userRole,
         activeView: 'dashboard',
         authUser: {
           id: user.id,
           email: user.email,
-          role: 'student',
-          fullName: user.user_metadata?.full_name || user.email || 'Signed in user',
+          role: userRole,
+          fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Signed in user',
+          department: profile?.department || '',
+          degreeProgram: profile?.degree_program || '',
+          studentNumber: profile?.student_number || user.user_metadata?.student_id || '',
+          qpi: profile?.qpi ?? '',
+          householdIncome: profile?.household_income ?? '',
+          hasActiveGovernmentGrant: profile?.has_active_government_grant ?? false,
         },
+        profileDraft: profile?.degree_program
+          ? { ...previous.profileDraft, degreeProgram: profile.degree_program }
+          : previous.profileDraft,
       }));
+      if (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) {
+        setProfileOnboarding({ id: user.id, fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Signed in user', initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || user.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
+      }
     };
 
     hydrateSession();
@@ -226,8 +246,10 @@ function App() {
   const currentProfile = demoUsers[roleKeyMap[state.viewerRole] || 'student'];
 
   const themeClass = state.theme === 'light' ? 'theme-light' : '';
-  const studentMatchProfile = { ...demoUsers.student, ...state.profileDraft };
-  const currentIdentity = state.viewerRole === 'student' ? { ...currentProfile, ...state.profileDraft } : currentProfile;
+  const studentMatchProfile = { ...demoUsers.student, ...state.profileDraft, ...(state.authUser || {}) };
+  const currentIdentity = state.viewerRole === 'student'
+    ? { ...currentProfile, ...state.profileDraft, ...(state.authUser || {}) }
+    : currentProfile;
   const scholarshipCatalog = scholarships;
 
   const eligibleScholarships = useMemo(() => rankScholarships(studentMatchProfile, scholarshipCatalog), [studentMatchProfile, scholarshipCatalog]);
@@ -287,6 +309,8 @@ function App() {
     if (authResult.success || authResult.fallback) {
       const resolvedRole = authResult.user?.user_metadata?.role || selectedRole;
       const account = resolveAccount(resolvedRole);
+      const profileResult = authResult.user?.id ? await getUserProfile(authResult.user.id) : { profile: null };
+      const profile = profileResult.profile;
 
       updateState((previous) => ({
         ...previous,
@@ -297,12 +321,24 @@ function App() {
           id: authResult.user?.id || account.id,
           email: credentials.email,
           role: account.role,
-          fullName: authResult.user?.user_metadata?.full_name || account.fullName,
+          fullName: profile?.full_name || authResult.user?.user_metadata?.full_name || account.fullName,
+          department: profile?.department || account.department,
+          degreeProgram: profile?.degree_program || '',
+          studentNumber: profile?.student_number || authResult.user?.user_metadata?.student_id || '',
+          qpi: profile?.qpi ?? '',
+          householdIncome: profile?.household_income ?? '',
         },
         rememberMe: credentials.rememberMe || false,
         savedEmail: credentials.rememberMe ? credentials.email : previous.savedEmail,
         savedRole: credentials.rememberMe ? account.role : previous.savedRole,
+        profileDraft: profile?.degree_program
+          ? { ...previous.profileDraft, degreeProgram: profile.degree_program }
+          : previous.profileDraft,
       }));
+
+      if (authResult.user?.id && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null)) {
+        setProfileOnboarding({ id: authResult.user.id, fullName: profile?.full_name || authResult.user?.user_metadata?.full_name || account.fullName, initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || authResult.user?.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
+      }
 
       return {
         success: true,
@@ -365,6 +401,33 @@ function App() {
       viewerRole: 'student',
       activeView: 'dashboard',
     }));
+    setProfileOnboarding(null);
+  };
+
+  const saveAcademicProfile = async (program, studentNumber, householdIncome, qpi, hasActiveGovernmentGrant) => {
+    setIsSavingProfile(true);
+    setProfileSaveError('');
+    const result = await updateUserProfile(profileOnboarding.id, {
+      degreeProgram: program.value,
+      department: program.department,
+      studentNumber,
+      householdIncome,
+      qpi,
+      hasActiveGovernmentGrant,
+    });
+
+    if (!result.success) {
+      setProfileSaveError(result.message || 'Unable to save your academic profile.');
+      setIsSavingProfile(false);
+      return;
+    }
+
+    updateState((previous) => ({
+      authUser: { ...previous.authUser, department: program.department, degreeProgram: program.value, studentNumber, householdIncome, qpi, hasActiveGovernmentGrant },
+      profileDraft: { ...previous.profileDraft, degreeProgram: program.value, householdIncome, qpi, hasActiveGovernmentGrant },
+    }));
+    setProfileOnboarding(null);
+    setIsSavingProfile(false);
   };
 
   const applyToScholarship = (scholarship) => {
@@ -594,6 +657,36 @@ function App() {
     }));
   };
 
+  const saveEligibilityProfile = async (profile) => {
+    const profileUpdate = {
+      degreeProgram: profile.degreeProgram,
+      department: getAcademicProgram(profile.degreeProgram).department,
+      studentNumber: state.authUser?.studentNumber || currentProfile.studentNumber,
+      householdIncome: profile.householdIncome,
+      qpi: profile.qpi,
+      hasActiveGovernmentGrant: Boolean(profile.hasActiveGovernmentGrant),
+    };
+
+    if (!state.authUser?.id) {
+      updateState((previous) => ({
+        ...previous,
+        profileDraft: { ...previous.profileDraft, ...profile },
+        authUser: { ...previous.authUser, ...profileUpdate },
+      }));
+      return { success: true };
+    }
+
+    const result = await updateUserProfile(state.authUser.id, profileUpdate);
+    if (!result.success) return result;
+
+    updateState((previous) => ({
+      ...previous,
+      profileDraft: { ...previous.profileDraft, ...profile },
+      authUser: { ...previous.authUser, ...profileUpdate },
+    }));
+    return result;
+  };
+
   const eligiblePreview = eligibleScholarships.slice(0, 6);
   const departmentQueue = departmentReviews.filter((entry) => entry.department === currentProfile.department);
 
@@ -631,6 +724,19 @@ function App() {
 
   return (
     <div className={`app-shell ${themeClass}`}>
+      {profileOnboarding && (
+        <AcademicProfileModal
+          fullName={profileOnboarding.fullName}
+          initialProgram={profileOnboarding.initialProgram}
+          initialStudentNumber={profileOnboarding.initialStudentNumber}
+          initialHouseholdIncome={profileOnboarding.initialHouseholdIncome}
+          initialQpi={profileOnboarding.initialQpi}
+          initialHasActiveGovernmentGrant={profileOnboarding.initialHasActiveGovernmentGrant}
+          onSave={saveAcademicProfile}
+          isSaving={isSavingProfile}
+          errorMessage={profileSaveError}
+        />
+      )}
       <header className="topbar">
         <div className="topbar-brand-block">
           <div className="topbar-brand-row">
@@ -677,10 +783,10 @@ function App() {
       <main className="layout">
         <aside className="sidebar card">
           <div className="profile-block">
-            <div className="avatar">{currentProfile.fullName.slice(0, 1)}</div>
+            <div className="avatar">{currentIdentity.fullName.slice(0, 1)}</div>
             <div>
-              <h2>{currentProfile.fullName}</h2>
-              <p>{roleLabels[state.viewerRole]} · {currentProfile.department}</p>
+              <h2>{currentIdentity.fullName}</h2>
+              <p>{roleLabels[state.viewerRole]} · {currentIdentity.department}</p>
             </div>
           </div>
 
@@ -748,8 +854,8 @@ function App() {
             <EligibilityCheckerPage
               profileDraft={state.profileDraft}
               scholarships={scholarshipCatalog}
-              onChange={(patch) => updateState((previous) => ({ profileDraft: { ...previous.profileDraft, ...patch } }))}
               onApply={applyToScholarship}
+              onSaveProfile={saveEligibilityProfile}
             />
           )}
 

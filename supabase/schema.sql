@@ -6,6 +6,7 @@ create table if not exists profiles (
   full_name text not null,
   role text not null check (role in ('student', 'osa_admin', 'department_chair')),
   email text,
+  student_number text unique,
   phone text,
   department text,
   degree_program text,
@@ -16,15 +17,26 @@ create table if not exists profiles (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists annual_qpi_records (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(user_id) on delete cascade,
+  academic_year text not null,
+  qpi numeric(3, 2) not null check (qpi >= 0 and qpi <= 4),
+  recorded_at timestamptz not null default now(),
+  unique (user_id, academic_year)
+);
+
 -- Create the application profile in the same transaction as the Auth user.
 -- This also supports users created from Authentication > Users in Supabase.
+alter table profiles add column if not exists student_number text unique;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (user_id, full_name, role, email)
+  insert into public.profiles (user_id, full_name, role, email, student_number)
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), split_part(coalesce(new.email, ''), '@', 1), 'ScholarPath user'),
@@ -33,7 +45,8 @@ begin
         then new.raw_user_meta_data ->> 'role'
       else 'student'
     end,
-    new.email
+    new.email,
+    nullif(new.raw_user_meta_data ->> 'student_id', '')
   )
   on conflict (user_id) do update set
     email = excluded.email,
@@ -127,6 +140,7 @@ create table if not exists department_reviews (
 );
 
 alter table profiles enable row level security;
+alter table annual_qpi_records enable row level security;
 alter table scholarships enable row level security;
 alter table documents enable row level security;
 alter table applications enable row level security;
@@ -174,3 +188,7 @@ for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
 drop policy if exists "department_reviews_restricted" on department_reviews;
 create policy "department_reviews_restricted" on department_reviews
 for select using (auth.uid() = reviewer_id);
+
+drop policy if exists "annual_qpi_records_self_access" on annual_qpi_records;
+create policy "annual_qpi_records_self_access" on annual_qpi_records
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
