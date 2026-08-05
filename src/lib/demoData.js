@@ -405,6 +405,7 @@ export const announcements = [
 export const departmentReviews = [
   {
     id: 'rev-001',
+    applicationId: 'app-001',
     studentName: 'Maria Clara Santos',
     department: 'BS Computer Science',
     qpi: 3.12,
@@ -414,6 +415,7 @@ export const departmentReviews = [
   },
   {
     id: 'rev-002',
+    applicationId: 'app-002',
     studentName: 'John Paul Dizon',
     department: 'BS Information Technology',
     qpi: 2.84,
@@ -423,6 +425,7 @@ export const departmentReviews = [
   },
   {
     id: 'rev-003',
+    applicationId: 'app-001',
     studentName: 'Eleanor Cruz',
     department: 'BS Computer Science',
     qpi: 3.45,

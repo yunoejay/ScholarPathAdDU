@@ -124,14 +124,6 @@ export default function SettingsView({ notificationPreferences, onUpdatePreferen
             </label>
           </div>
         </div>
-
-        <div className="settings-info">
-          <div className={`backend-status ${getBackendStatusTone()}`}>
-            <span className="backend-status-label">Backend</span>
-            <strong>{backendStatus}</strong>
-          </div>
-          <p>💡 Backend Note: These settings will trigger automated Edge Functions once backend integration is complete.</p>
-        </div>
       </section>
     </div>
   );
