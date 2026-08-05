@@ -1,46 +1,23 @@
 import { useEffect, useState } from 'react';
-import { academicPrograms } from '../lib/academicPrograms';
+import { degreePrograms } from '../lib/demoData';
 import { rankScholarships } from '../lib/eligibility';
 import { Card, EmptyState, ScholarshipRow } from '../components/pageParts';
 import { SelectPicker } from './LoginScreen';
 
-export default function EligibilityChecker({ profileDraft, scholarships, onApply, onSaveProfile }) {
+export default function EligibilityChecker({ profileDraft, scholarships, onChange, onApply }) {
   const [result, setResult] = useState([]);
-  const [editableProfile, setEditableProfile] = useState(profileDraft);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [saveMessage, setSaveMessage] = useState('');
-  const [qpiText, setQpiText] = useState(String(editableProfile.qpi ?? ''));
-  const [incomeText, setIncomeText] = useState(String(editableProfile.householdIncome ?? ''));
-  const qpiValue = Number(editableProfile.qpi);
-  const hasTemporaryChanges = JSON.stringify(editableProfile) !== JSON.stringify(profileDraft);
-  const isQpiOutOfRange = Number.isFinite(qpiValue) && (qpiValue < 0 || qpiValue > 4);
+  const [qpiText, setQpiText] = useState(String(profileDraft.qpi ?? ''));
+  const [incomeText, setIncomeText] = useState(String(profileDraft.householdIncome ?? ''));
+  const qpiValue = Number(profileDraft.qpi);
+  const isQpiOutOfRange = Number.isFinite(qpiValue) && (qpiValue < 1 || qpiValue > 5);
 
   useEffect(() => {
-    setEditableProfile(profileDraft);
     setQpiText(String(profileDraft.qpi ?? ''));
+  }, [profileDraft.qpi]);
+
+  useEffect(() => {
     setIncomeText(String(profileDraft.householdIncome ?? ''));
-    setSaveMessage('');
-  }, [profileDraft]);
-
-  const updateEditableProfile = (patch) => {
-    setSaveMessage('');
-    setEditableProfile((previous) => ({ ...previous, ...patch }));
-  };
-
-  const resetToSavedProfile = () => {
-    setEditableProfile(profileDraft);
-    setQpiText(String(profileDraft.qpi ?? ''));
-    setIncomeText(String(profileDraft.householdIncome ?? ''));
-    setSaveMessage('');
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSavingProfile(true);
-    setSaveMessage('');
-    const result = await onSaveProfile(editableProfile);
-    setSaveMessage(result?.success ? 'Saved to your profile and annual QPI history.' : (result?.message || 'Unable to save your profile.'));
-    setIsSavingProfile(false);
-  };
+  }, [profileDraft.householdIncome]);
 
   const commitQpi = (rawValue) => {
     const normalizedValue = rawValue.trim();
@@ -59,28 +36,28 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
 
     const roundedValue = Math.round(parsedValue * 100) / 100;
     setQpiText(normalizedValue);
-    updateEditableProfile({ qpi: roundedValue });
+    onChange({ qpi: roundedValue });
   };
 
   const clampQpi = () => {
     if (qpiText.trim() === '') {
-      setQpiText(String(editableProfile.qpi ?? ''));
+      setQpiText(String(profileDraft.qpi ?? ''));
       return;
     }
 
     const parsedValue = Number(qpiText);
 
     if (Number.isNaN(parsedValue)) {
-      setQpiText(String(editableProfile.qpi ?? ''));
+      setQpiText(String(profileDraft.qpi ?? ''));
       return;
     }
 
     let normalizedValue = Math.round(parsedValue * 100) / 100;
-    if (normalizedValue < 0) normalizedValue = 0;
-    if (normalizedValue > 4) normalizedValue = 4;
+    if (normalizedValue < 1) normalizedValue = 1;
+    if (normalizedValue > 5) normalizedValue = 5;
 
     setQpiText(normalizedValue.toFixed(2));
-    updateEditableProfile({ qpi: normalizedValue });
+    onChange({ qpi: normalizedValue });
   };
 
   const commitIncome = (rawValue) => {
@@ -100,38 +77,38 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
 
     const roundedValue = Math.round(parsedValue);
     setIncomeText(normalizedValue);
-    updateEditableProfile({ householdIncome: roundedValue });
+    onChange({ householdIncome: roundedValue });
   };
 
   const clampIncome = () => {
     if (incomeText.trim() === '') {
-      setIncomeText(String(editableProfile.householdIncome ?? ''));
+      setIncomeText(String(profileDraft.householdIncome ?? ''));
       return;
     }
 
     const parsedValue = Number(incomeText);
 
     if (Number.isNaN(parsedValue)) {
-      setIncomeText(String(editableProfile.householdIncome ?? ''));
+      setIncomeText(String(profileDraft.householdIncome ?? ''));
       return;
     }
 
     const roundedValue = Math.round(parsedValue);
     setIncomeText(String(roundedValue));
-    updateEditableProfile({ householdIncome: roundedValue });
+    onChange({ householdIncome: roundedValue });
   };
 
   useEffect(() => {
-    const numericQpi = Number(editableProfile.qpi);
+    const numericQpi = Number(profileDraft.qpi);
 
-    if (!Number.isFinite(numericQpi) || numericQpi < 0 || numericQpi > 4) {
+    if (!Number.isFinite(numericQpi) || numericQpi < 1 || numericQpi > 5) {
       setResult([]);
       return;
     }
 
-    const matches = rankScholarships(editableProfile, scholarships);
+    const matches = rankScholarships(profileDraft, scholarships);
     setResult(matches.slice(0, 8));
-  }, [editableProfile, scholarships]);
+  }, [profileDraft, scholarships]);
 
   return (
     <div className="view-stack">
@@ -156,64 +133,52 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
               <span>QPI</span>
               <div className="number-input">
                 <button type="button" className="number-btn dec" onClick={() => {
-                  let value = Number(qpiText) || Number(editableProfile.qpi) || 0.00;
+                  let value = Number(qpiText) || Number(profileDraft.qpi) || 1.00;
                   value = Math.round((value - 0.01) * 100) / 100;
-                  if (value < 0.00) value = 0.00;
+                  if (value < 1.00) value = 1.00;
                   setQpiText(value.toFixed(2));
-                  updateEditableProfile({ qpi: value });
+                  onChange({ qpi: value });
                 }}>−</button>
-                <input type="text" inputMode="decimal" value={qpiText} onChange={(event) => commitQpi(event.target.value)} onBlur={clampQpi} placeholder="0.00" />
+                <input type="text" inputMode="decimal" value={qpiText} onChange={(event) => commitQpi(event.target.value)} onBlur={clampQpi} placeholder="1.00" />
                 <button type="button" className="number-btn inc" onClick={() => {
-                  let value = Number(qpiText) || Number(editableProfile.qpi) || 0.00;
+                  let value = Number(qpiText) || Number(profileDraft.qpi) || 1.00;
                   value = Math.round((value + 0.01) * 100) / 100;
-                  if (value > 4.00) value = 4.00;
+                  if (value > 5.00) value = 5.00;
                   setQpiText(value.toFixed(2));
-                  updateEditableProfile({ qpi: value });
+                  onChange({ qpi: value });
                 }}>+</button>
               </div>
-              {isQpiOutOfRange && <span className="field-warning">QPI should be between 0.00 and 4.00.</span>}
+              {isQpiOutOfRange && <span className="field-warning">QPI should be between 1.00 and 5.00.</span>}
             </label>
             <label>
               <span>Household income</span>
               <div className="number-input">
                 <button type="button" className="number-btn dec" onClick={() => {
-                  let value = Number(incomeText) || Number(editableProfile.householdIncome) || 0;
+                  let value = Number(incomeText) || Number(profileDraft.householdIncome) || 0;
                   value = value - 1000;
                   setIncomeText(String(value));
-                  updateEditableProfile({ householdIncome: value });
+                  onChange({ householdIncome: value });
                 }}>−</button>
                 <input type="text" inputMode="numeric" value={incomeText} onChange={(event) => commitIncome(event.target.value)} onBlur={clampIncome} placeholder="0" />
                 <button type="button" className="number-btn inc" onClick={() => {
-                  let value = Number(incomeText) || Number(editableProfile.householdIncome) || 0;
+                  let value = Number(incomeText) || Number(profileDraft.householdIncome) || 0;
                   value = value + 1000;
                   setIncomeText(String(value));
-                  updateEditableProfile({ householdIncome: value });
+                  onChange({ householdIncome: value });
                 }}>+</button>
               </div>
             </label>
             <SelectPicker
               label="Degree program"
-              value={editableProfile.degreeProgram}
-              onChange={(value) => updateEditableProfile({ degreeProgram: value })}
-              options={academicPrograms.map((program) => ({ value: program.value, label: program.label }))}
+              value={profileDraft.degreeProgram}
+              onChange={(value) => onChange({ degreeProgram: value })}
+              options={degreePrograms.map((degree) => ({ value: degree, label: degree }))}
               idPrefix="eligibility-degree"
             />
             <label className="toggle-chip inline">
-              <input type="checkbox" checked={editableProfile.hasActiveGovernmentGrant} onChange={(event) => updateEditableProfile({ hasActiveGovernmentGrant: event.target.checked })} />
+              <input type="checkbox" checked={profileDraft.hasActiveGovernmentGrant} onChange={(event) => onChange({ hasActiveGovernmentGrant: event.target.checked })} />
               Active government grant
             </label>
-          </div>
-          <div className="eligibility-actions">
-            <div className={`temporary-profile-note ${hasTemporaryChanges ? 'temporary-profile-note--active' : ''}`}>
-              {hasTemporaryChanges ? 'Using temporary checker values. Your saved profile has not changed.' : 'Using your saved profile values.'}
-            </div>
-            <div className="button-row">
-              {hasTemporaryChanges && <button type="button" className="secondary-btn" onClick={resetToSavedProfile}>Reset to saved profile</button>}
-              <button type="button" className="primary-btn" onClick={handleSaveProfile} disabled={!hasTemporaryChanges || isSavingProfile}>
-                {isSavingProfile ? 'Saving…' : 'Save as my profile'}
-              </button>
-            </div>
-            {saveMessage && <span className="field-hint">{saveMessage}</span>}
           </div>
         </Card>
 

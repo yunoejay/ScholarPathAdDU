@@ -5,256 +5,251 @@ const dateFromToday = (days) => {
   return date.toISOString().slice(0, 10);
 };
 
+const getNextForm230Deadline = (from = today) => {
+  const year = from.getFullYear();
+  const lastFridayOf = (y, monthIndex) => {
+    const lastDayOfMonth = new Date(y, monthIndex + 1, 0);
+    const offsetToFriday = (lastDayOfMonth.getDay() - 5 + 7) % 7;
+    lastDayOfMonth.setDate(lastDayOfMonth.getDate() - offsetToFriday);
+    return lastDayOfMonth;
+  };
+  const candidates = [lastFridayOf(year, 3), lastFridayOf(year, 9), lastFridayOf(year + 1, 3)];
+  const next = candidates.find((date) => date.getTime() >= from.getTime()) ?? candidates[candidates.length - 1];
+  return next.toISOString().slice(0, 10);
+};
+
+const FORM_230_DEADLINE = getNextForm230Deadline();
+
 export const degreePrograms = [
   'BS Computer Science',
   'BS Information Technology',
-  'BS Information Systems',
   'BS Business Administration',
   'BS Accountancy',
   'BS Psychology',
   'BS Civil Engineering',
-  'BS Electrical Engineering',
-  'BS Electronics Engineering',
-  'BS Mechanical Engineering',
-  'BS Industrial Engineering',
   'BS Nursing',
   'BA Communication',
   'BS Biology',
-  'BS Nutrition-Dietetics',
-  'BS Hospitality Management',
-  'BS Architecture',
-  'BS Criminology',
-  'BS Public Administration',
-  'BS Philosophy',
   'BS Education',
+  'BS Architecture',
+  'BS Business Management',
+  'BS Management Accounting',
 ];
 
-// Map degree programs to their respective school/college at AdDU
-export const degreeToSchoolMap = {
-  'BS Computer Science': 'College of Computer Studies (CCS)',
-  'BS Information Technology': 'College of Computer Studies (CCS)',
-  'BS Information Systems': 'College of Computer Studies (CCS)',
+const FORM_230_COVERAGE = 'Form 230-SCH general pool \u2014 judged by the College Scholarship Committee on need, academic standing, and service. Category A\u2013F award: \u20b15,000\u2013\u20b115,000 partial grant or full tuition. Confirm tier with OSA; no fund-specific criteria are separately published.';
 
-  // School of Nursing
-  'BS Nursing': 'School of Nursing (SON)',
-
-  // School of Engineering and Architecture
-  'BS Civil Engineering': 'School of Engineering and Architecture (SEA)',
-  'BS Electrical Engineering': 'School of Engineering and Architecture (SEA)',
-  'BS Electronics Engineering': 'School of Engineering and Architecture (SEA)',
-  'BS Mechanical Engineering': 'School of Engineering and Architecture (SEA)',
-  'BS Industrial Engineering': 'School of Engineering and Architecture (SEA)',
-  'BS Architecture': 'School of Engineering and Architecture (SEA)',
-
-  // College of Business
-  'BS Business Administration': 'College of Business (COB)',
-  'BS Accountancy': 'College of Business (COB)',
-
-  // School of Health Professions
-  'BS Nutrition-Dietetics': 'School of Health Professions (SHP)',
-  'BS Hospitality Management': 'School of Health Professions (SHP)',
-
-  // College of Arts and Sciences / Other
-  'BS Psychology': 'College of Arts and Sciences (CAS)',
-  'BS Biology': 'College of Arts and Sciences (CAS)',
-  'BA Communication': 'College of Arts and Sciences (CAS)',
-  'BS Criminology': 'College of Arts and Sciences (CAS)',
-  'BS Public Administration': 'College of Arts and Sciences (CAS)',
-  'BS Philosophy': 'College of Arts and Sciences (CAS)',
-  'BS Education': 'College of Arts and Sciences (CAS)',
-};
-
-const namedScholarships = [
-  {
-    title: 'Grant-in-Aid (GIA)',
-    category: 'Internal Endowment',
-    origin: 'AdDU Office of Student Affairs',
-    coverageType: 'Full Tuition',
-    coverage: 'Tuition and partial allowance support for economically challenged students.',
-    minimumQpi: 2.5,
-    maximumIncome: 300000,
-    eligibleDegrees: ['ALL'],
-    allowsMultipleGrants: false,
-    departmentScope: 'All departments',
-    deadline: dateFromToday(18),
-    isActive: true,
-    tags: ['urgent', 'endowment', 'need-based'],
-  },
-  {
-    title: 'Jubilee Fund',
-    category: 'Internal Endowment',
-    origin: 'AdDU Donor Network',
-    coverageType: 'Partial Tuition',
-    coverage: 'Partial tuition relief and project support.',
-    minimumQpi: 2.75,
-    maximumIncome: 350000,
-    eligibleDegrees: ['ALL'],
-    allowsMultipleGrants: true,
-    departmentScope: 'All departments',
-    deadline: dateFromToday(31),
-    isActive: true,
-    tags: ['merit', 'donor-funded'],
-  },
-  {
-    title: 'Jesuit Memorial Endowment',
-    category: 'Internal Endowment',
-    origin: 'AdDU Alumni and Benefactors',
-    coverageType: 'Partial Tuition',
-    coverage: 'Tuition support for academically strong applicants.',
-    minimumQpi: 2.9,
-    maximumIncome: 450000,
-    eligibleDegrees: ['ALL'],
-    allowsMultipleGrants: true,
-    departmentScope: 'All departments',
-    deadline: dateFromToday(46),
-    isActive: true,
-    tags: ['merit', 'legacy'],
-  },
-  {
-    title: 'SM Foundation Scholarship',
-    category: 'Corporate & External',
-    origin: 'SM Foundation',
-    coverageType: 'Full Tuition',
-    coverage: 'Full tuition and academic allowance for qualified students.',
-    minimumQpi: 2.75,
-    maximumIncome: 250000,
-    eligibleDegrees: ['BS Computer Science', 'BS Information Technology', 'BS Accountancy', 'BS Engineering'],
-    allowsMultipleGrants: false,
-    departmentScope: 'STEM and business programs',
-    deadline: dateFromToday(22),
-    isActive: true,
-    tags: ['corporate', 'full tuition'],
-  },
-  {
-    title: 'Aboitiz Future Leaders',
-    category: 'Corporate & External',
-    origin: 'Aboitiz Foundation',
-    coverageType: 'Full Tuition',
-    coverage: 'Tuition, allowance, and leadership development opportunities.',
-    minimumQpi: 3.0,
-    maximumIncome: 400000,
-    eligibleDegrees: ['BS Computer Science', 'BS Information Technology', 'BS Business Administration', 'BS Engineering'],
-    allowsMultipleGrants: false,
-    departmentScope: 'High-performing students',
-    deadline: dateFromToday(37),
-    isActive: true,
-    tags: ['leadership', 'corporate'],
-  },
-  {
-    title: 'Davao Light (MICD)',
-    category: 'Corporate & External',
-    origin: 'Davao Light / MICD',
-    coverageType: 'Partial Tuition',
-    coverage: 'Scholarship assistance for selected program partners.',
-    minimumQpi: 2.7,
-    maximumIncome: 320000,
-    eligibleDegrees: ['BS Engineering', 'BS Information Technology', 'BS Computer Science'],
-    allowsMultipleGrants: false,
-    departmentScope: 'Engineering and tech-related disciplines',
-    deadline: dateFromToday(26),
-    isActive: true,
-    tags: ['corporate', 'stem'],
-  },
-  {
-    title: 'CHED PESFA',
-    category: 'State-Sponsored',
-    origin: 'Commission on Higher Education',
-    coverageType: 'Full Tuition',
-    coverage: 'Government scholarship for priority degree programs.',
-    minimumQpi: 2.5,
-    maximumIncome: 300000,
-    eligibleDegrees: ['ALL'],
-    allowsMultipleGrants: false,
-    departmentScope: 'Priority programs',
-    deadline: dateFromToday(16),
-    isActive: true,
-    tags: ['government', 'priority'],
-  },
-  {
-    title: 'DOST-SEI Merit',
-    category: 'State-Sponsored',
-    origin: 'Department of Science and Technology',
-    coverageType: 'Full Tuition',
-    coverage: 'STEM scholarship with stipend and book allowance.',
-    minimumQpi: 2.75,
-    maximumIncome: 400000,
-    eligibleDegrees: ['BS Computer Science', 'BS Information Technology', 'BS Biology', 'BS Civil Engineering', 'BS Nursing'],
-    allowsMultipleGrants: false,
-    departmentScope: 'STEM and health programs',
-    deadline: dateFromToday(29),
-    isActive: true,
-    tags: ['government', 'stem'],
-  },
-  {
-    title: 'GSIS Subsidy',
-    category: 'State-Sponsored',
-    origin: 'Government Service Insurance System',
-    coverageType: 'Partial Tuition',
-    coverage: 'Financial assistance for dependent students.',
-    minimumQpi: 2.25,
-    maximumIncome: 450000,
-    eligibleDegrees: ['ALL'],
-    allowsMultipleGrants: true,
-    departmentScope: 'All departments',
-    deadline: dateFromToday(44),
-    isActive: true,
-    tags: ['government', 'subsidy'],
-  },
-  {
-    title: 'Student Assistant (SA) Program',
-    category: 'Specialized Service',
-    origin: 'AdDU Student Employment Office',
-    coverageType: 'Allowance',
-    coverage: 'Campus work opportunities and monthly allowance.',
-    minimumQpi: 2.0,
-    maximumIncome: 350000,
-    eligibleDegrees: ['ALL'],
-    allowsMultipleGrants: true,
-    departmentScope: 'All departments',
-    deadline: dateFromToday(12),
-    isActive: true,
-    tags: ['service', 'work-study'],
-  },
-];
-
-const categoryBlueprints = [
-  { category: 'Internal Endowment', origin: 'AdDU Office of Student Affairs', coverageType: 'Partial Tuition', allowsMultipleGrants: true, maximumIncome: 420000, minimumQpi: 2.4 },
-  { category: 'Corporate & External', origin: 'Partner Foundation', coverageType: 'Partial Tuition', allowsMultipleGrants: false, maximumIncome: 380000, minimumQpi: 2.7 },
-  { category: 'State-Sponsored', origin: 'Government Agency', coverageType: 'Full Tuition', allowsMultipleGrants: false, maximumIncome: 300000, minimumQpi: 2.5 },
-];
-
-const genericScholarships = Array.from({ length: 54 - namedScholarships.length }, (_, index) => {
-  const blueprint = categoryBlueprints[index % categoryBlueprints.length];
-  const sequence = String(index + 1).padStart(2, '0');
-  const categoryPrefix = blueprint.category === 'Internal Endowment' ? 'Endowment' : blueprint.category === 'Corporate & External' ? 'Partner Grant' : 'National Grant';
-  const degreeScope = index % 4 === 0 ? ['ALL'] : [degreePrograms[index % degreePrograms.length], degreePrograms[(index + 3) % degreePrograms.length]];
-
-  return {
-    title: `${categoryPrefix} ${sequence}`,
-    category: blueprint.category,
-    origin: blueprint.origin,
-    coverageType: blueprint.coverageType,
-    coverage: `${blueprint.coverageType} support with deadline tracking and document-vault compatibility.`,
-    minimumQpi: blueprint.minimumQpi + (index % 3) * 0.1,
-    maximumIncome: blueprint.maximumIncome - (index % 5) * 10000,
-    eligibleDegrees: degreeScope,
-    allowsMultipleGrants: blueprint.allowsMultipleGrants || index % 5 === 0,
-    departmentScope: index % 3 === 0 ? 'All departments' : degreeScope.join(', '),
-    deadline: dateFromToday(10 + index),
-    isActive: index % 13 !== 12,
-    tags: [
-      blueprint.category === 'State-Sponsored' ? 'government' : 'scholarship',
-      index % 2 === 0 ? 'deadline-tracked' : 'faceted-search',
-    ],
-  };
+const buildGeneralPoolEntry = (appendixNumber, title, category, origin) => ({
+  appendixNumber,
+  title,
+  category,
+  ruleFamily: 'general-pool',
+  origin,
+  applicationRoute: 'AdDU general process (Form 230-SCH)',
+  isExternal: false,
+  isMatchable: true,
+  coverageType: 'Partial Tuition',
+  coverage: FORM_230_COVERAGE,
+  minimumQpi: 2.5,
+  maximumIncome: 250000,
+  eligibleDegrees: ['ALL'],
+  allowsMultipleGrants: false,
+  departmentScope: 'All departments (excluding BS Nursing and BS Architecture)',
+  deadline: FORM_230_DEADLINE,
+  isActive: true,
+  tags: ['form-230', 'general-pool', category === 'Corporate & External' ? 'donor-funded' : 'endowment'],
 });
 
-export const scholarships = [...namedScholarships, ...genericScholarships].map((scholarship, index) => ({
+const internalEndowmentFunds = [
+  { n: 1, title: 'Antonio A. Villanueva Endowment Fund' },
+  { n: 2, title: 'Ateneo Alumni Association of Canada' },
+  { n: 3, title: 'Ateneo Alumni Association of Southern California' },
+  { n: 4, title: 'Alfonso Frances Marie Ybanez' },
+  { n: 5, title: 'Arts and Sciences Fund' },
+  { n: 6, title: 'Rev. Fr. John Dotterweich SJ Scholarship Fund' },
+  { n: 7, title: 'Rev. Fr. Rodolfo Malasmas SJ Scholarship Fund' },
+  { n: 8, title: 'Bank of Philippine Islands (BPI) Foundation' },
+  { n: 9, title: 'De La Paz Scholarship Fund' },
+  { n: 10, title: 'Davao Jesuit Memorial Scholarship Fund' },
+  { n: 11, title: 'Rev. Fr. Edmundo M. Martinez, SJ Endowment Fund' },
+  { n: 13, title: 'Kalasag Scholarship Fund' },
+  { n: 15, title: 'Montemayor Scholarship Fund' },
+  { n: 16, title: 'St. Aloysius Gonzaga Scholarship Fund' },
+  { n: 17, title: 'Sycip, Gorres, Velayo (SGV) and Company' },
+  { n: 18, title: 'St. John Berchman Scholarship' },
+  { n: 19, title: 'Vicente L. Babao Scholarship Foundation' },
+  { n: 20, title: 'Jose & Avelina Buktaw Scholarship' },
+  { n: 21, title: 'Rogelio Alama Scholarship' },
+  { n: 22, title: 'SC Johnson and Son, Inc. Scholarship Grant' },
+];
+
+const corporateExternalFunds = [
+  { n: 24, title: 'Alfonso Yuchenco (AY) Foundation, Inc.' },
+  { n: 25, title: 'Antonio O. Floirendo Sr., Foundation, Inc.' },
+  { n: 26, title: 'Archimedes and Samad Lu Foundation Scholarship Grant' },
+  { n: 27, title: 'Ateneo Alumni Association of British Columbia' },
+  { n: 28, title: 'Ben and Quennie Balaba Scholarship Grant' },
+  { n: 29, title: 'Carmudi Philippines Scholarship Program' },
+  { n: 30, title: 'Equitable PCIBank Foundation' },
+  { n: 31, title: 'EMCOR, Inc.' },
+  { n: 32, title: 'Jesus V. del Rosario (JVR) Foundation Scholarship' },
+  { n: 33, title: 'Jollibee Foundation, Inc.' },
+  { n: 34, title: 'Metrobank Foundation Scholarship Fund' },
+  { n: 35, title: 'Nelly Kellog Van Shaik (NKVS) Scholarship' },
+  { n: 36, title: 'PAGCOR Scholarship Fund' },
+  { n: 37, title: 'Shoemart (SM) Foundation, Inc.' },
+  { n: 38, title: 'Vicente B. Bello Scholarship' },
+  { n: 39, title: 'Tanging Yaman Foundation' },
+  { n: 40, title: 'Davao Light / Aboitiz Foundation (MICD Scholarship)' },
+];
+
+const internalEndowmentEntries = internalEndowmentFunds.map(({ n, title }) =>
+  buildGeneralPoolEntry(n, title, 'Internal Endowment', 'AdDU Office of Student Affairs (donor-endowed fund)'));
+
+const corporateExternalEntries = corporateExternalFunds.map(({ n, title }) =>
+  buildGeneralPoolEntry(n, title, 'Corporate & External', title));
+
+const giaEntry = {
+  appendixNumber: 12,
+  title: 'Grant-in-Aid (GIA)',
+  category: 'Internal Endowment',
+  ruleFamily: 'general-pool',
+  origin: 'AdDU Office of Student Affairs',
+  applicationRoute: 'Separate online application (own GIA portal, per level)',
+  isExternal: false,
+  isMatchable: true,
+  coverageType: 'Full Tuition',
+  coverage: 'Online GIA application (separate NEW vs. RENEWAL links). Tuition and partial allowance support for economically qualified students; not available to students covered by AdDU Employee Other Benefits (EOB).',
+  minimumQpi: 2.5,
+  maximumIncome: 250000,
+  eligibleDegrees: ['ALL'],
+  allowsMultipleGrants: false,
+  departmentScope: 'All departments',
+  deadline: FORM_230_DEADLINE,
+  isActive: true,
+  tags: ['gia', 'general-pool', 'priority'],
+};
+
+const jubileeHonorsEntry = {
+  appendixNumber: 14,
+  title: 'Jubilee Scholarship Fund (Valedictorian & Salutatorian)',
+  category: 'Internal Endowment',
+  ruleFamily: 'honors',
+  origin: 'AdDU Office of Student Affairs',
+  applicationRoute: 'Form 230-SCH general process + separate Valedictorian/Salutatorian track',
+  isExternal: false,
+  isMatchable: true,
+  coverageType: 'Full Tuition',
+  coverage: 'Valedictorian: 100% tuition, renewable 4 years. Salutatorian: 50% tuition. Requires official standing from a graduating class of 80+ students, entering as an AdDU first-year student.',
+  minimumQpi: null,
+  maximumIncome: null,
+  eligibleDegrees: ['ALL'],
+  allowsMultipleGrants: false,
+  departmentScope: 'All departments',
+  deadline: FORM_230_DEADLINE,
+  isActive: true,
+  tags: ['honors', 'first-year-only'],
+};
+
+const a1Entry = {
+  appendixNumber: 23,
+  title: 'A-1 Scholarship Program (Micro-Philanthropy)',
+  category: 'Internal Endowment',
+  ruleFamily: 'excluded',
+  origin: 'AdDU Alumni & Donor Network',
+  applicationRoute: 'Donor/alumni giving program \u2014 not a student application',
+  isExternal: false,
+  isMatchable: false,
+  coverageType: 'Partial Tuition',
+  coverage: 'Alumni pledge a recurring donation pooled to fund the general scholarship pool. Students cannot apply to A-1 directly.',
+  minimumQpi: null,
+  maximumIncome: null,
+  eligibleDegrees: ['ALL'],
+  allowsMultipleGrants: false,
+  departmentScope: 'Not applicable',
+  deadline: null,
+  isActive: true,
+  tags: ['donor-program', 'not-student-facing'],
+};
+
+const saProgramEntry = {
+  appendixNumber: 54,
+  title: 'Student Assistant (SA) Program',
+  category: 'Specialized Service',
+  ruleFamily: 'work-study',
+  origin: 'AdDU Office of Student Affairs',
+  applicationRoute: 'Separate AdDU application via the Office of Student Affairs',
+  isExternal: false,
+  isMatchable: true,
+  coverageType: 'Allowance',
+  coverage: 'Work-for-tuition arrangement for evening-program students. Minimum 6.5 hours of service per day, at least 22 days per month.',
+  minimumQpi: null,
+  maximumIncome: null,
+  eligibleDegrees: ['BS Business Management', 'BS Management Accounting'],
+  allowsMultipleGrants: true,
+  departmentScope: 'BS Business Management, BS Management Accounting (evening programs)',
+  deadline: dateFromToday(90),
+  isActive: true,
+  tags: ['work-study', 'rolling-basis'],
+};
+
+const governmentLinkedEntries = [
+  { n: 41, title: 'CHED-Regional Scholarship Program', govProgram: 'CHED_REGIONAL', coverage: 'Apply directly with CHEDRO XI for Davao; AdDU only certifies enrollment.' },
+  { n: 42, title: 'CHED-National Scholarship Program', govProgram: 'CHED_NATIONAL', coverage: 'Apply directly with CHEDRO XI for Davao; AdDU only certifies enrollment.' },
+  { n: 43, title: 'CHED-CSSG (Special Study Grant)', govProgram: 'CHED_CSSG', coverage: 'Apply directly with CHEDRO XI for Davao; AdDU only certifies enrollment.' },
+  { n: 44, title: 'Private Education Student Financial Assistance Program (PESFA)', govProgram: 'CHED_PESFA', coverage: 'For students at a private HEI. Apply via CHEDRO XI online portal; parental income generally must not exceed \u20b1400,000\u2013\u20b1500,000.' },
+  { n: 45, title: 'State Scholarship Program (SSP)', govProgram: 'CHED_SSP', coverage: 'Reserved for SUC/LUC students \u2014 does not apply to AdDU.' },
+  { n: 46, title: 'National Integration Study Grant Program (NISGP)', govProgram: 'CHED_NISGP', coverage: 'CHED-administered; confirm current availability directly with CHEDRO XI.' },
+  { n: 47, title: 'Selected Ethnic Group Educational Assistance Program (SEGEAP)', govProgram: 'CHED_SEGEAP', coverage: 'CHED-administered; confirm current availability directly with CHEDRO XI.' },
+  { n: 48, title: 'DOST-SEI Merit Scholarship Program', govProgram: 'DOST_MERIT', coverage: 'For incoming freshmen only. STEM-strand graduates or non-STEM top 5% may apply via the DOST-SEI E-Application System.' },
+  { n: 49, title: 'DOST RA7687 Science and Technology Scholarship', govProgram: 'DOST_RA7687', coverage: 'Same freshman-only, STEM-strand gate as the DOST-SEI Merit Scholarship. Apply via DOST-SEI E-Application System.' },
+  { n: 50, title: 'DOST Junior Level Assistance Program (JLAP)', govProgram: 'DOST_JLAP', coverage: 'For continuing (2nd year+) students. Opens periodically as JLSS \u2014 confirm current openings with DOST-SEI.' },
+  { n: 51, title: 'Government Service Insurance System (GSIS) Scholarship Fund', govProgram: 'GSIS', coverage: 'For dependents of active GSIS members. Bundles GSP, GESP, and GSSP sub-programs. Apply directly via GSIS.' },
+  { n: 52, title: 'AFP Educational Benefit System Office (AFPEBSO)', govProgram: 'AFPEBSO', coverage: 'For dependents of AFP/CAA personnel. Apply directly with AFPEBSO or the nearest AFP unit.' },
+  { n: 53, title: 'US Department of Veterans Affairs Education Benefits', govProgram: 'US_VA', coverage: 'For qualifying dependents of US veterans. Apply directly via va.gov.' },
+].map((entry) => ({
+  appendixNumber: entry.n,
+  title: entry.title,
+  govProgram: entry.govProgram,
+  category: 'State-Sponsored',
+  ruleFamily: 'government-linked',
+  origin: entry.govProgram.startsWith('CHED') ? 'Commission on Higher Education'
+    : entry.govProgram.startsWith('DOST') ? 'Department of Science and Technology'
+    : entry.govProgram === 'GSIS' ? 'Government Service Insurance System'
+    : entry.govProgram === 'AFPEBSO' ? 'AFP Educational Benefit System Office'
+    : 'US Department of Veterans Affairs',
+  applicationRoute: entry.govProgram.startsWith('CHED') ? 'External \u2014 apply via CHEDRO XI'
+    : entry.govProgram.startsWith('DOST') ? 'External \u2014 apply via DOST-SEI E-Application System'
+    : entry.govProgram === 'GSIS' ? 'External \u2014 member-nominated, apply via GSIS'
+    : entry.govProgram === 'AFPEBSO' ? 'External \u2014 apply via AFPEBSO or nearest AFP unit'
+    : 'External \u2014 apply via US Department of Veterans Affairs',
+  isExternal: true,
+  isMatchable: true,
+  coverageType: 'Full Tuition',
+  coverage: entry.coverage,
+  minimumQpi: null,
+  maximumIncome: null,
+  eligibleDegrees: ['ALL'],
+  allowsMultipleGrants: true,
+  departmentScope: 'All departments',
+  deadline: null,
+  isActive: true,
+  tags: ['government', entry.govProgram === 'US_VA' ? 'us-va' : entry.govProgram.split('_')[0].toLowerCase()],
+}));
+
+const orderedScholarships = [
+  ...internalEndowmentEntries,
+  giaEntry,
+  jubileeHonorsEntry,
+  ...corporateExternalEntries,
+  a1Entry,
+  ...governmentLinkedEntries,
+  saProgramEntry,
+].sort((a, b) => a.appendixNumber - b.appendixNumber);
+
+export const scholarships = orderedScholarships.map((scholarship, index) => ({
   id: `sch-${String(index + 1).padStart(3, '0')}`,
   ...scholarship,
 }));
-
-const scholarshipByTitle = Object.fromEntries(scholarships.map((scholarship) => [scholarship.title, scholarship]));
 
 export const demoUsers = {
   student: {
@@ -267,7 +262,20 @@ export const demoUsers = {
     degreeProgram: 'BS Information Technology',
     qpi: 2.86,
     householdIncome: 240000,
+    citizenship: 'Filipino',
+    isOnPrepaidPlan: false,
+    hasSiblingOnAid: false,
+    hasOtherActiveScholarship: false,
     hasActiveGovernmentGrant: false,
+    academicStanding: 'good',
+    applicantType: 'current',
+    yearLevel: 2,
+    isHonorsGraduate: false,
+    honorsRank: '',
+    graduatingClassSize: '',
+    hsStrand: '',
+    hsAverage: '',
+    sponsorTies: { gsisMemberDependent: false, afpDependent: false, usVeteranDependent: false },
     bio: 'Undergraduate student looking for scholarship matches and deadline alerts.',
   },
   admin: {
@@ -298,11 +306,13 @@ export const demoUsers = {
   },
 };
 
+const scholarshipByTitle = Object.fromEntries(scholarships.map((s) => [s.title, s]));
+
 export const applications = [
   {
     id: 'app-001',
     studentId: 'user-student',
-    scholarshipId: scholarshipByTitle['Grant-in-Aid (GIA)'].id,
+    scholarshipId: scholarshipByTitle['Grant-in-Aid (GIA)']?.id ?? 'sch-012',
     scholarshipTitle: 'Grant-in-Aid (GIA)',
     status: 'Under Review',
     documentStatus: 'Verified',
@@ -314,8 +324,8 @@ export const applications = [
   {
     id: 'app-002',
     studentId: 'user-student',
-    scholarshipId: scholarshipByTitle['DOST-SEI Merit'].id,
-    scholarshipTitle: 'DOST-SEI Merit',
+    scholarshipId: scholarshipByTitle['DOST-SEI Merit Scholarship Program']?.id ?? 'sch-048',
+    scholarshipTitle: 'DOST-SEI Merit Scholarship Program',
     status: 'Draft',
     documentStatus: 'Pending',
     submittedAt: null,
@@ -333,7 +343,7 @@ export const documents = [
     fileName: 'transcript.pdf',
     documentType: 'Transcript',
     verificationStatus: 'Verified',
-    sharedWith: ['Grant-in-Aid (GIA)', 'DOST-SEI Merit'],
+    sharedWith: ['Grant-in-Aid (GIA)', 'DOST-SEI Merit Scholarship Program'],
     uploadedAt: dateFromToday(-8),
   },
   {
@@ -353,7 +363,7 @@ export const documents = [
     fileName: 'coe.pdf',
     documentType: 'Enrollment',
     verificationStatus: 'Verified',
-    sharedWith: ['DOST-SEI Merit'],
+    sharedWith: ['DOST-SEI Merit Scholarship Program'],
     uploadedAt: dateFromToday(-2),
   },
 ];
@@ -363,7 +373,7 @@ export const notifications = [
     id: 'not-001',
     title: 'GIA deadline reminder',
     channel: 'SMS',
-    body: 'Your Grant-in-Aid application is due in 3 days. Upload any missing documents now.',
+    body: 'Your Grant-in-Aid application is due soon. Upload any missing documents now.',
     status: 'Unread',
     createdAt: dateFromToday(-1),
   },
