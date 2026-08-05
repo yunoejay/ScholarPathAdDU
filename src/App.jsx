@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
 import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
 import { getAcademicProgram } from './lib/academicPrograms';
-import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
+import { getSupabaseSession, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword } from './lib/auth';
 import AcademicProfileModal from './components/AcademicProfileModal';
 import { NotificationDropdown } from './components/pageParts';
 import LoginScreenPage from './pages/LoginScreen';
