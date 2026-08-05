@@ -74,30 +74,52 @@ export default function ScholarshipExplorer({ profile, scholarships, searchQuery
       <section className="catalog-grid">
         {scholarships.length ? scholarships.map((scholarship) => {
           const deadline = getDeadlineStatus(scholarship.deadline);
+          const hasNumericCriteria = scholarship.minimumQpi != null && scholarship.maximumIncome != null;
+          const isGeneralPool = scholarship.ruleFamily === 'general-pool';
+
           return (
             <article key={scholarship.id} className="card scholarship-card">
               <div className="card-head">
-                <div>
+                <div className="sc-pills">
                   <span className="pill">{scholarship.category}</span>
-                  <h3>{scholarship.title}</h3>
+                  <span className="pill muted">#{scholarship.appendixNumber}</span>
                 </div>
                 <span className={`status-pill ${deadline.tone}`}>{deadline.label}</span>
               </div>
 
-              <p>{scholarship.coverage}</p>
+              <h3 className="sc-title">{scholarship.title}</h3>
 
-              <div className="meta-grid">
-                <span><strong>QPI</strong> {scholarship.minimumQpi}+</span>
-                <span><strong>Income</strong> ≤ {fmtCurrency(scholarship.maximumIncome)}</span>
-                <span><strong>Deadline</strong> {fmtDate(scholarship.deadline)}</span>
-                <span><strong>Degrees</strong> {scholarship.eligibleDegrees.includes('ALL') ? 'All programs' : scholarship.eligibleDegrees.length}</span>
-              </div>
+              {isGeneralPool ? (
+                <span className="route-badge">Form 230-SCH · Committee-assessed · Category A–F</span>
+              ) : (
+                <p className="sc-desc">{scholarship.coverage}</p>
+              )}
+
+              {hasNumericCriteria ? (
+                <div className="sc-facts">
+                  <span><strong>QPI</strong> {scholarship.minimumQpi}+</span>
+                  <span><strong>Income</strong> ≤ {fmtCurrency(scholarship.maximumIncome)}</span>
+                  <span><strong>Due</strong> {fmtDate(scholarship.deadline)}</span>
+                </div>
+              ) : (
+                <div className="sc-facts">
+                  <span><strong>Route</strong> {scholarship.isExternal ? 'External portal' : 'AdDU OSA'}</span>
+                  <span><strong>Degrees</strong> {scholarship.eligibleDegrees?.includes('ALL') ? 'All' : scholarship.eligibleDegrees?.join(', ')}</span>
+                  <span><strong>Due</strong> {fmtDate(scholarship.deadline)}</span>
+                </div>
+              )}
 
               <div className="tag-row">
                 {scholarship.tags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
               </div>
 
-              <button className="primary-btn full-width" onClick={() => onApply(scholarship)}>Apply / track</button>
+              {scholarship.isMatchable === false ? (
+                <button className="secondary-btn full-width" disabled>Not a student application</button>
+              ) : scholarship.isExternal ? (
+                <button className="primary-btn full-width" onClick={() => onApply(scholarship)}>Track · apply via {scholarship.origin}</button>
+              ) : (
+                <button className="primary-btn full-width" onClick={() => onApply(scholarship)}>Apply / track</button>
+              )}
             </article>
           );
         }) : <EmptyState title="No scholarships match your filters" description="Relax the filters or use a broader search term to surface more programs." action={<button className="secondary-btn" onClick={() => { onSearchChange(''); onFilterChange({ category: 'all', coverage: 'all', deadline: 'all', activeOnly: true }); }}>Reset filters</button>} />}
