@@ -465,14 +465,15 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
           <div className="login-hero">
             <div className="login-brand-row">
               <img src={logoImage} alt="Ateneo de Davao University logo" className="login-logo" />
+              <span className="login-brand-name">ScholarPath AdDU</span>
             </div>
-            <h1>Sign in to your scholarship workspace</h1>
+            <h1 className="login-hero-title">Sign in to your scholarship workspace</h1>
           </div>
 
           <form className="login-form" onSubmit={submitLogin}>
             <label>
               <span>Email</span>
-              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="AdDU Email" />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="Email" />
             </label>
              <label className="password-field-wrapper">
                <span>Password</span>

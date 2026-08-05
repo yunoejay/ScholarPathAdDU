@@ -2,7 +2,7 @@
 
 
 ## Purpose
-This repository contains ScholarPath AdDU, a React + Vite scholarship discovery, eligibility matching, document vault, application tracking, and admin review prototype for Ateneo de Davao University.
+This repository contains ScholarPath AdDU, a React + Vite scholarship discovery, eligibility matching, Document Vault, application tracking, notification, calendar, and admin review prototype for Ateneo de Davao University.
 
 
 This file is the operating guide for any future coding agent working in this workspace.
@@ -29,6 +29,10 @@ ScholarPath AdDU is a centralized hybrid web and mobile system for student schol
 - A Document Vault that supports one-time upload and multi-application reuse.
 - A notification subsystem for deadline and status alerts.
 - Role-based access control for students, OSA administrators, and Department Chairs.
+- A student application workspace for filtering, submitting, inspecting, and exporting application reports.
+- A reusable Document Vault with upload validation, verification states, and application links.
+- A deadline calendar supporting scholarship deadlines and student-created reminders.
+- Configurable notification channels and reminder timing, with an in-app notification center.
 - A polished task-based usability prototype evaluated with ISO/IEC 25010 and SUS.
 
 
@@ -55,6 +59,9 @@ Use the manuscript language consistently in new code, UI text, documentation, an
 - Grant-in-Aid or GIA.
 - Financial aid pipelines.
 - Application tracking.
+- Application workspace.
+- Notification center.
+- Deadline calendar.
 
 
 Avoid introducing alternate names for the same feature unless the current codebase already uses a different stable label that users see.
@@ -64,21 +71,23 @@ Avoid introducing alternate names for the same feature unless the current codeba
 The present implementation is organized as follows:
 
 
-- `src/App.jsx` is the main state and routing-style coordinator for auth, demo state, theme, profile hydration, and view switching.
+- `src/App.jsx` is the main state and routing-style coordinator for authentication, demo state, theme, profile hydration, notification generation, deadline reminders, and view switching. It persists the demo state in localStorage under `scholarpath-addu-demo-state`.
 - `src/pages/` contains the main screens:
   - `LoginScreen.jsx`
   - `DashboardView.jsx`
   - `ScholarshipExplorer.jsx`
   - `EligibilityChecker.jsx`
-  - `ApplicationsAndVault.jsx`
+  - `ApplicationsView.jsx` — student application filtering, progress, submission, detail modal, and text report export.
+  - `DocumentVaultView.jsx` — student document upload, search/filter, verification display, and deletion.
+  - `ApplicationsAndVault.jsx` — legacy/combined application and vault screen retained for compatibility where referenced.
   - `AdminConsole.jsx`
   - `DepartmentReviewView.jsx`
   - `CalendarView.jsx`
   - `SettingsView.jsx`
-- `src/components/` contains shared UI building blocks and modal/page-part helpers.
-- `src/lib/` contains the domain logic, formatting helpers, auth helpers, eligibility rules, demo data, and Supabase setup.
+- `src/components/` contains shared UI building blocks, modal/page-part helpers, notification cards, announcements, and the `NotificationDropdown` center.
+- `src/lib/` contains the domain logic, formatting helpers, authentication helpers, eligibility rules, demo data, backend-status helpers, academic-program taxonomy, and Supabase setup.
 - `supabase/schema.sql` is the reference schema for backend-aligned work.
-- `src/styles.css` defines the visual language, including the current dark-first theme with a light theme override.
+- `src/styles.css` defines the responsive visual language, Ateneo blue identity, dark theme, and `.theme-light` override for the light theme.
 
 
 ## Editing Principles
@@ -93,6 +102,8 @@ Follow these rules when making changes:
 - Do not introduce new dependencies unless they clearly solve the task better than the current stack.
 - Do not remove or rewrite manuscript-aligned terminology just to make the code more generic.
 - Avoid unnecessary refactors that change behavior, layout, or data shape.
+- Treat `applications`, `documents`, `notifications`, `announcements`, `customDeadlines`, `notificationPreferences`, and `theme` as persisted demo-state domains; add compatibility defaults when extending them.
+- Keep file-upload behavior demo-safe: the browser stores document metadata and a local demo record rather than requiring a storage backend.
 
 
 ## Domain Rules
@@ -105,6 +116,10 @@ These rules come from the manuscript and should guide implementation details:
 - Document handling should behave like a normalized vault where the same file can be attached to multiple applications.
 - Notifications should remain event-oriented in concept, even if the local demo simulates the behavior.
 - Role-based access should preserve student, OSA admin, and Department Chair boundaries.
+- Application progress should remain status-driven (`Draft`, `Submitted`, `Under Review`, `For Verification`, `Approved`, and `Rejected`) and submitting a draft should create a trackable review event.
+- Documents should expose verification states (`Pending`, `Verified`, and `Rejected`) and remain reusable across applications through attached document IDs.
+- Custom calendar deadlines must be future-facing, persisted locally, removable, and eligible for configured 7-day, 3-day, and 1-day in-app reminders.
+- In-app notification creation must respect `notificationPreferences.inAppEnabled`; generated reminders must use a stable source key so they are not duplicated on each render.
 - The app should continue to feel like a prototype aligned with the study, not a generic scholarship portal.
 
 
@@ -118,6 +133,9 @@ Match the existing design direction unless a task explicitly calls for redesign:
 - Avoid introducing a visually generic dashboard style.
 - Keep forms and task flows simple enough for the manuscript's usability-testing narrative.
 - When adding visible text, prefer the manuscript's formal research tone and user-facing terminology.
+- Keep notification menus keyboard- and mobile-friendly: support outside-click/Escape dismissal, readable unread counts, and adequate touch targets.
+- Keep the mobile page-navigation drawer minimal: it should use a solid theme-aware background and show only the page links, without extra branding or a duplicate drawer heading.
+- The light/dark theme toggle is available on both the authenticated shell and login screen and must remain persisted across reloads.
 
 
 ## Data And State Conventions
@@ -129,6 +147,8 @@ Use the existing local shapes and patterns already established in the app:
 - Supabase configuration should continue to route through `src/lib/supabaseClient.js`.
 - New persisted state should be additive and guarded so old localStorage entries do not break the app.
 - Avoid breaking assumptions in `App.jsx` around `viewerRole`, `activeView`, `profileDraft`, `documents`, `applications`, `notifications`, and `announcements`.
+- Preserve the nested shape of `notificationPreferences`, including `smsEnabled`, `emailEnabled`, `inAppEnabled`, and `deadlineReminders.oneWeekBefore`, `threeDaysBefore`, and `dayBefore`.
+- New localStorage state must be merged with defaults so older saved sessions remain loadable; do not assume `customDeadlines` or notification preferences exist in older records.
 
 
 ## Safe Implementation Workflow
@@ -149,6 +169,7 @@ Prefer these checks when appropriate:
 - `npm run build` for general validation.
 - `npm run dev` for manual review of the local prototype.
 - Targeted checks for any touched Supabase, auth, or eligibility logic.
+- Manually smoke-test the student flows: apply from Scholarship Explorer, submit/view/export an application, upload/filter/delete a vault document, add/delete a calendar reminder, and toggle notification preferences.
 
 
 If validation fails, fix the same slice before widening the scope.
@@ -174,6 +195,7 @@ Do not:
 - Replace the current domain model with a generic template app model.
 - Rename core manuscript concepts without a good reason.
 - Make broad styling changes that are unrelated to the task.
+- Treat SMS and email settings as prototype preferences only; do not claim that real external delivery exists unless an integration is implemented.
 
 
 ## Practical Notes For Future Agents
