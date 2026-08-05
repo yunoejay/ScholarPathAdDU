@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
 import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
-import { getSupabaseSession, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword } from './lib/auth';
+import { getAcademicProgram } from './lib/academicPrograms';
+import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
+import AcademicProfileModal from './components/AcademicProfileModal';
+import { NotificationDropdown } from './components/pageParts';
 import LoginScreenPage from './pages/LoginScreen';
 import DashboardViewPage from './pages/DashboardView';
 import ScholarshipExplorerPage from './pages/ScholarshipExplorer';
 import EligibilityCheckerPage from './pages/EligibilityChecker';
-import ApplicationsAndVaultPage from './pages/ApplicationsAndVault';
+import ApplicationsViewPage from './pages/ApplicationsView';
+import DocumentVaultViewPage from './pages/DocumentVaultView';
 import AdminConsolePage from './pages/AdminConsole';
 import DepartmentReviewViewPage from './pages/DepartmentReviewView';
 import CalendarViewPage from './pages/CalendarView';
@@ -19,6 +23,35 @@ const roleLabels = {
   osa_admin: 'OSA Admin',
   department_chair: 'Department Chair',
 };
+
+const getInitials = (fullName = '') => fullName
+  .split(/\s+/)
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0].toUpperCase())
+  .join('') || 'SP';
+
+const dateKey = (value) => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const reminderDateKey = (deadline, daysBefore) => {
+  const reminderDate = new Date(`${deadline}T00:00:00`);
+  reminderDate.setDate(reminderDate.getDate() - daysBefore);
+  return dateKey(reminderDate);
+};
+
+const prependInAppNotification = (previous, notification) => (
+  previous.notificationPreferences?.inAppEnabled
+    ? [notification, ...previous.notifications]
+    : previous.notifications
+);
 
 const readStoredState = () => {
   if (typeof window === 'undefined') {
@@ -122,9 +155,22 @@ const createInitialState = () => {
     rememberMe: stored.rememberMe ?? defaults.rememberMe,
     savedEmail: stored.savedEmail ?? defaults.savedEmail,
     savedRole: stored.savedRole ?? defaults.savedRole,
-    filters: { ...defaults.filters, ...(stored.filters ?? {}) },
-    profileDraft: { ...defaults.profileDraft, ...(stored.profileDraft ?? {}) },
-    notificationPreferences: { ...defaults.notificationPreferences, ...(stored.notificationPreferences ?? {}) },
+    filters: {
+      ...defaults.filters,
+      ...(stored.filters ?? {}),
+    },
+    profileDraft: {
+      ...defaults.profileDraft,
+      ...(stored.profileDraft ?? {}),
+    },
+    notificationPreferences: {
+      ...defaults.notificationPreferences,
+      ...(stored.notificationPreferences ?? {}),
+      deadlineReminders: {
+        ...defaults.notificationPreferences.deadlineReminders,
+        ...(stored.notificationPreferences?.deadlineReminders ?? {}),
+      },
+    },
     applications: Array.isArray(stored.applications) && stored.applications.length ? stored.applications : defaults.applications,
     documents: Array.isArray(stored.documents) && stored.documents.length ? stored.documents : defaults.documents,
     notifications: Array.isArray(stored.notifications) && stored.notifications.length ? stored.notifications : defaults.notifications,
@@ -134,6 +180,7 @@ const createInitialState = () => {
 
 function App() {
   const [state, setState] = useState(createInitialState);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   // theme: 'dark' | 'light' — persisted in state
   const [isBooting, setIsBooting] = useState(true);
 
@@ -154,6 +201,72 @@ function App() {
     const timer = window.setTimeout(() => setIsBooting(false), 250);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (isBooting) {
+      return undefined;
+    }
+
+    const syncDeadlineReminders = () => {
+      setState((previous) => {
+        if (!previous.notificationPreferences?.inAppEnabled || !previous.customDeadlines.length) {
+          return previous;
+        }
+
+        const today = dateKey(new Date());
+        const reminderOptions = [
+          { key: 'oneWeekBefore', daysBefore: 7 },
+          { key: 'threeDaysBefore', daysBefore: 3 },
+          { key: 'dayBefore', daysBefore: 1 },
+        ];
+        const existingReminderKeys = new Set(
+          previous.notifications.map((notification) => notification.sourceKey).filter(Boolean),
+        );
+        const dueReminders = [];
+
+        previous.customDeadlines.forEach((deadline) => {
+          reminderOptions.forEach(({ key, daysBefore }) => {
+            if (!previous.notificationPreferences.deadlineReminders?.[key]) {
+              return;
+            }
+
+            const reminderDate = reminderDateKey(deadline.deadline, daysBefore);
+            const sourceKey = `deadline-reminder-${deadline.id}-${daysBefore}`;
+            if (reminderDate > today || today > deadline.deadline || existingReminderKeys.has(sourceKey)) {
+              return;
+            }
+
+            dueReminders.push({
+              id: `not-${crypto.randomUUID()}`,
+              sourceKey,
+              title: `Reminder: "${deadline.title}" due in ${daysBefore} day${daysBefore === 1 ? '' : 's'}`,
+              channel: 'In-app',
+              body: daysBefore === 1
+                ? 'Your deadline is tomorrow. Make sure all required documents are ready.'
+                : `You have ${daysBefore} days to prepare documents and materials for this deadline.`,
+              status: 'Unread',
+              createdAt: today,
+            });
+          });
+        });
+
+        return dueReminders.length
+          ? { ...previous, notifications: [...dueReminders, ...previous.notifications] }
+          : previous;
+      });
+    };
+
+    syncDeadlineReminders();
+    const interval = window.setInterval(syncDeadlineReminders, 60 * 60 * 1000);
+    window.addEventListener('focus', syncDeadlineReminders);
+    document.addEventListener('visibilitychange', syncDeadlineReminders);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', syncDeadlineReminders);
+      document.removeEventListener('visibilitychange', syncDeadlineReminders);
+    };
+  }, [isBooting]);
 
   useEffect(() => {
     if (isBooting) {
@@ -243,7 +356,8 @@ function App() {
     [state.documents, currentProfile.id],
   );
 
-  const unreadNotifications = useMemo(() => state.notifications.filter((entry) => entry.status === 'Unread'), [state.notifications]);
+  const visibleNotifications = state.notificationPreferences.inAppEnabled ? state.notifications : [];
+  const unreadNotifications = useMemo(() => visibleNotifications.filter((entry) => entry.status === 'Unread'), [visibleNotifications]);
   const activeDeadlineCount = useMemo(
     () => scholarshipCatalog.filter((entry) => getDeadlineStatus(entry.deadline).tone !== 'danger').length,
     [scholarshipCatalog],
@@ -272,7 +386,10 @@ function App() {
     }));
   };
 
-  const navigate = (view) => updateState({ activeView: view });
+  const navigate = (view) => {
+    updateState({ activeView: view });
+    setIsMobileNavOpen(false);
+  };
 
   const login = async (credentials) => {
     const authResult = await signInWithEmailPassword({
@@ -384,17 +501,14 @@ function App() {
     setState((previous) => ({
       ...previous,
       applications: [nextApplication, ...previous.applications],
-      notifications: [
-        {
-          id: `not-${crypto.randomUUID()}`,
-          title: `${scholarship.title} added to your tracker`,
-          channel: 'In-app',
-          body: `A new draft application was created and linked to your document vault.`,
-          status: 'Unread',
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-        ...previous.notifications,
-      ],
+      notifications: prependInAppNotification(previous, {
+        id: `not-${crypto.randomUUID()}`,
+        title: `${scholarship.title} added to your tracker`,
+        channel: 'In-app',
+        body: `A new draft application was created and linked to your document vault.`,
+        status: 'Unread',
+        createdAt: new Date().toISOString().slice(0, 10),
+      }),
       activeView: 'applications',
     }));
   };
@@ -408,17 +522,14 @@ function App() {
         submittedAt: entry.submittedAt ?? new Date().toISOString().slice(0, 10),
         updatedAt: new Date().toISOString().slice(0, 10),
       } : entry),
-      notifications: [
-        {
-          id: `not-${crypto.randomUUID()}`,
-          title: 'Application submitted',
-          channel: 'Email',
-          body: 'Your scholarship application has been submitted to the centralized tracker.',
-          status: 'Unread',
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-        ...previous.notifications,
-      ],
+      notifications: prependInAppNotification(previous, {
+        id: `not-${crypto.randomUUID()}`,
+        title: 'Application submitted',
+        channel: 'Email',
+        body: 'Your scholarship application has been submitted to the centralized tracker.',
+        status: 'Unread',
+        createdAt: new Date().toISOString().slice(0, 10),
+      }),
     }));
   };
 
@@ -430,17 +541,14 @@ function App() {
         status,
         updatedAt: new Date().toISOString().slice(0, 10),
       } : entry),
-      notifications: [
-        {
-          id: `not-${crypto.randomUUID()}`,
-          title: `Application moved to ${status}`,
-          channel: 'Email',
-          body: 'OSA updated the status in the admin dashboard and triggered a status notification.',
-          status: 'Unread',
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-        ...previous.notifications,
-      ],
+      notifications: prependInAppNotification(previous, {
+        id: `not-${crypto.randomUUID()}`,
+        title: `Application moved to ${status}`,
+        channel: 'Email',
+        body: 'OSA updated the status in the admin dashboard and triggered a status notification.',
+        status: 'Unread',
+        createdAt: new Date().toISOString().slice(0, 10),
+      }),
     }));
   };
 
@@ -451,6 +559,20 @@ function App() {
         ...entry,
         verificationStatus,
       } : entry),
+    }));
+  };
+
+  const deleteDocument = (documentId) => {
+    const documentToDelete = state.documents.find((entry) => entry.id === documentId);
+    if (!documentToDelete || !window.confirm(`Delete “${documentToDelete.title}” from your vault?`)) return;
+    setState((previous) => ({
+      ...previous,
+      documents: previous.documents.filter((entry) => entry.id !== documentId),
+      applications: previous.applications.map((entry) => ({
+        ...entry,
+        attachedDocuments: (entry.attachedDocuments || []).filter((id) => id !== documentId),
+        documentStatus: (entry.attachedDocuments || []).filter((id) => id !== documentId).length ? entry.documentStatus : 'Pending',
+      })),
     }));
   };
 
@@ -478,17 +600,14 @@ function App() {
     setState((previous) => ({
       ...previous,
       documents: [nextDocument, ...previous.documents],
-      notifications: [
-        {
-          id: `not-${crypto.randomUUID()}`,
-          title: `${title} uploaded to Document Vault`,
-          channel: 'In-app',
-          body: 'The file is now reusable across multiple scholarship applications.',
-          status: 'Unread',
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-        ...previous.notifications,
-      ],
+      notifications: prependInAppNotification(previous, {
+        id: `not-${crypto.randomUUID()}`,
+        title: `${title} uploaded to Document Vault`,
+        channel: 'In-app',
+        body: 'The file is now reusable across multiple scholarship applications.',
+        status: 'Unread',
+        createdAt: new Date().toISOString().slice(0, 10),
+      }),
     }));
 
     event.currentTarget.reset();
@@ -548,37 +667,6 @@ function App() {
         customDeadlines: [newDeadline, ...previous.customDeadlines],
       };
 
-      // Generate reminder notifications 7 days and 5 days before deadline
-      const reminderNotifications = [];
-      const sevenDaysBefore = new Date(deadlineDate);
-      sevenDaysBefore.setDate(sevenDaysBefore.getDate() - 7);
-
-      const fiveDaysBefore = new Date(deadlineDate);
-      fiveDaysBefore.setDate(fiveDaysBefore.getDate() - 5);
-
-      if (sevenDaysBefore > now) {
-        reminderNotifications.push({
-          id: `not-${crypto.randomUUID()}`,
-          title: `Reminder: "${title}" due in 7 days`,
-          channel: 'In-app',
-          body: `You have 7 days to prepare documents and materials for this deadline. Start gathering required papers now.`,
-          status: 'Unread',
-          createdAt: sevenDaysBefore.toISOString().slice(0, 10),
-        });
-      }
-
-      if (fiveDaysBefore > now) {
-        reminderNotifications.push({
-          id: `not-${crypto.randomUUID()}`,
-          title: `Reminder: "${title}" due in 5 days`,
-          channel: 'In-app',
-          body: `5 days left. Make sure all required documents are ready and verified.`,
-          status: 'Unread',
-          createdAt: fiveDaysBefore.toISOString().slice(0, 10),
-        });
-      }
-
-      updatedState.notifications = [...reminderNotifications, ...updatedState.notifications];
       return updatedState;
     });
   };
@@ -637,10 +725,60 @@ function App() {
         </div>
 
         <div className="topbar-actions">
-          {state.authUser && <span className="status-pill info">Signed in as {state.authUser.fullName}</span>}
+          {state.authUser && (
+            <div className="topbar-identity" title={`${state.authUser.fullName} · ${roleLabels[state.viewerRole]}`}>
+              <span className="topbar-avatar" aria-hidden="true">{getInitials(state.authUser.fullName)}</span>
+              <span className="topbar-identity-copy">
+                <strong>{state.authUser.fullName}</strong>
+                <span>{roleLabels[state.viewerRole]}</span>
+              </span>
+            </div>
+          )}
+          <NotificationDropdown
+            notifications={visibleNotifications}
+            announcements={state.announcements}
+            onMarkRead={markNotificationRead}
+          />
+          <button
+            type="button"
+            className="mobile-nav-toggle topbar-menu-toggle"
+            onClick={() => setIsMobileNavOpen((open) => !open)}
+            aria-label={isMobileNavOpen ? 'Close page navigation' : 'Open page navigation'}
+            aria-expanded={isMobileNavOpen}
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
           <button className="secondary-btn" onClick={logout}>Logout</button>
         </div>
       </header>
+
+      {isMobileNavOpen && (
+        <>
+          <button
+            type="button"
+            className="mobile-nav-backdrop"
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close page navigation"
+          />
+          <aside className="mobile-nav-drawer" aria-label="Page navigation">
+            <nav className="nav-list mobile-nav-list">
+              <button className={state.activeView === 'dashboard' ? 'nav-active' : ''} onClick={() => navigate('dashboard')}>Dashboard</button>
+              {state.viewerRole === 'student' && (
+                <>
+                  <button className={state.activeView === 'explore' ? 'nav-active' : ''} onClick={() => navigate('explore')}>Scholarships</button>
+                  <button className={state.activeView === 'eligibility' ? 'nav-active' : ''} onClick={() => navigate('eligibility')}>Eligibility Checker</button>
+                  <button className={state.activeView === 'applications' ? 'nav-active' : ''} onClick={() => navigate('applications')}>Applications</button>
+                  <button className={state.activeView === 'vault' ? 'nav-active' : ''} onClick={() => navigate('vault')}>Document Vault</button>
+                  <button className={state.activeView === 'calendar' ? 'nav-active' : ''} onClick={() => navigate('calendar')}>Calendar</button>
+                </>
+              )}
+              {state.viewerRole === 'osa_admin' && <button className={state.activeView === 'admin' ? 'nav-active' : ''} onClick={() => navigate('admin')}>OSA Console</button>}
+              {state.viewerRole === 'department_chair' && <button className={state.activeView === 'review' ? 'nav-active' : ''} onClick={() => navigate('review')}>Department Review</button>}
+              <button className={state.activeView === 'settings' ? 'nav-active' : ''} onClick={() => navigate('settings')}>Settings</button>
+            </nav>
+          </aside>
+        </>
+      )}
 
       <button
         type="button"
@@ -686,7 +824,8 @@ function App() {
               <>
                 <button className={state.activeView === 'explore' ? 'nav-active' : ''} onClick={() => navigate('explore')}>Scholarships</button>
                 <button className={state.activeView === 'eligibility' ? 'nav-active' : ''} onClick={() => navigate('eligibility')}>Eligibility Checker</button>
-                <button className={state.activeView === 'applications' ? 'nav-active' : ''} onClick={() => navigate('applications')}>Applications & Vault</button>
+                <button className={state.activeView === 'applications' ? 'nav-active' : ''} onClick={() => navigate('applications')}>Applications</button>
+                <button className={state.activeView === 'vault' ? 'nav-active' : ''} onClick={() => navigate('vault')}>Document Vault</button>
               </>
             )}
             {state.viewerRole === 'osa_admin' && <button className={state.activeView === 'admin' ? 'nav-active' : ''} onClick={() => navigate('admin')}>OSA Console</button>}
@@ -718,11 +857,12 @@ function App() {
               stats={stats}
               applications={studentApplications}
               eligibleScholarships={eligiblePreview}
-              notifications={state.notifications}
+              notifications={visibleNotifications}
               announcements={state.announcements}
               onOpenExplorer={() => navigate('explore')}
               onOpenEligibility={() => navigate('eligibility')}
               onSubmitApplication={submitApplication}
+              onTrackScholarship={applyToScholarship}
               onMarkRead={markNotificationRead}
               onShowApplications={() => navigate('applications')}
             />
@@ -750,12 +890,21 @@ function App() {
           )}
 
           {state.activeView === 'applications' && (
-            <ApplicationsAndVaultPage
+              <ApplicationsViewPage
               applications={studentApplications}
               documents={studentDocuments}
               scholarships={scholarshipCatalog}
-              onUpload={addDocument}
               onSubmit={submitApplication}
+                onOpenVault={() => navigate('vault')}
+            />
+          )}
+
+          {state.activeView === 'vault' && state.viewerRole === 'student' && (
+            <DocumentVaultViewPage
+              documents={studentDocuments}
+              onUpload={addDocument}
+              onDelete={deleteDocument}
+              onOpenApplications={() => navigate('applications')}
             />
           )}
 
@@ -764,7 +913,7 @@ function App() {
               applications={state.applications}
               documents={state.documents}
               announcements={state.announcements}
-              notifications={state.notifications}
+              notifications={visibleNotifications}
               onChangeApplication={changeApplicationStatus}
               onChangeDocument={changeDocumentStatus}
               onCreateAnnouncement={addAnnouncement}

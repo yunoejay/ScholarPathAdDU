@@ -2,7 +2,7 @@ import { AnnouncementItem, Card, EmptyState, NotificationItem, ScholarshipRow, S
 import { fmtCurrency, fmtDate } from '../lib/formatters';
 import logoImage from '../../pictures/logo.png';
 
-export default function DashboardView({ profile, stats, applications, eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onSubmitApplication, onMarkRead, onShowApplications }) {
+export default function DashboardView({ profile, stats, applications, eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onTrackScholarship, onMarkRead, onShowApplications }) {
   // Student Dashboard
   if (profile.role === 'student') {
     const heroHighlights = [
@@ -67,7 +67,7 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
         </section>
 
         <section className="stats-grid">
-          <StatCard label="Programs in catalog" value={stats.totalPrograms} note="54 pipelines modeled from the manuscript" />
+          <StatCard label="Programs in catalog" value={stats.totalPrograms} note="Active scholarship opportunities" />
           <StatCard label="Eligible matches" value={stats.eligibleMatches} note="Smart Eligibility Checker results" />
           <StatCard label="Open applications" value={stats.openApplications} note="Drafts and submissions in progress" />
           <StatCard label="Unread alerts" value={stats.unreadNotifications} note="Deadline and status notifications" />
@@ -77,7 +77,7 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
           <Card title="Top matches" action={<button className="link-btn" onClick={onShowApplications}>View applications</button>}>
             <div className="list-stack">
               {eligibleScholarships.length ? eligibleScholarships.map((scholarship) => (
-                <ScholarshipRow key={scholarship.id} scholarship={scholarship} onApply={onSubmitApplication} />
+                <ScholarshipRow key={scholarship.id} scholarship={scholarship} onApply={onTrackScholarship} />
               )) : <EmptyState title="No eligible matches yet" description="Try adjusting your QPI, income, or degree inputs in the Eligibility Checker." action={<button className="secondary-btn" onClick={onOpenEligibility}>Check eligibility</button>} />}
             </div>
           </Card>
