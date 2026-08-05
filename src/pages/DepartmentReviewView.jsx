@@ -39,8 +39,8 @@ export default function DepartmentReviewView({ profile, queue, onChangeApplicati
                 </div>
                 <p>{entry.recommendation}</p>
                 <div className="button-row wrap">
-                  <button className="secondary-btn" onClick={() => onChangeApplication(entry.applicationId || entry.id, 'For Verification')}>Mark as endorsed</button>
-                  <button className="secondary-btn" onClick={() => onChangeApplication(entry.applicationId || entry.id, 'Rejected')}>Flag for OSA review</button>
+                  <button className="secondary-btn" disabled={!entry.applicationId} onClick={() => onChangeApplication(entry.applicationId, 'For Verification')}>Mark as endorsed</button>
+                  <button className="secondary-btn" disabled={!entry.applicationId} onClick={() => onChangeApplication(entry.applicationId, 'Rejected')}>Flag for OSA review</button>
                 </div>
               </article>
             )) : <EmptyState title="No applicants in queue" description="Department endorsements will appear here once student applications are routed for review." />}
