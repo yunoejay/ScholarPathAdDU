@@ -2,7 +2,7 @@ import { AnnouncementItem, Card, EmptyState, NotificationItem, ScholarshipRow, S
 import { fmtCurrency, fmtDate } from '../lib/formatters';
 import logoImage from '../../pictures/logo.png';
 
-export default function DashboardView({ profile, stats, applications, eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onSubmitApplication, onTrackScholarship, onMarkRead, onShowApplications }) {
+export default function DashboardView({ profile, stats, applications, eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onTrackScholarship, onMarkRead, onShowApplications }) {
   // Student Dashboard
   if (profile.role === 'student') {
     const heroHighlights = [
