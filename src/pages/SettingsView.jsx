@@ -1,127 +1,100 @@
-import { backendStatus, getBackendStatusTone } from '../lib/backendStatus';
+function SettingToggle({ checked, onChange, title, description }) {
+  return (
+    <label className="group flex cursor-pointer items-start gap-4 rounded-xl bg-app-surface p-4 transition-colors hover:bg-app-card">
+      <span className="relative mt-0.5 h-7 w-12 shrink-0 rounded-full bg-slate-400/20 transition-colors has-[:checked]:bg-ateneo">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+          className="peer sr-only"
+        />
+        <span className="pointer-events-none absolute bottom-[3px] left-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+      </span>
+      <span className="min-w-0">
+        <strong className="block text-sm font-semibold text-app-text">{title}</strong>
+        <span className="mt-1 block text-sm text-app-muted">{description}</span>
+      </span>
+    </label>
+  );
+}
 
 export default function SettingsView({ notificationPreferences, onUpdatePreferences }) {
+  const preferences = notificationPreferences || {
+    smsEnabled: false,
+    emailEnabled: false,
+    inAppEnabled: true,
+    deadlineReminders: { oneWeekBefore: true, threeDaysBefore: true, dayBefore: true },
+  };
+
   const updatePreference = (key, value) => {
     onUpdatePreferences({
-      ...notificationPreferences,
+      ...preferences,
       [key]: value,
     });
   };
 
   const updateDeadlineReminder = (key, value) => {
     onUpdatePreferences({
-      ...notificationPreferences,
+      ...preferences,
       deadlineReminders: {
-        ...notificationPreferences.deadlineReminders,
+        ...preferences.deadlineReminders,
         [key]: value,
       },
     });
   };
 
   return (
-    <div className="view-stack">
-      <section className="card">
-        <h2>Notification Settings</h2>
-        <p className="section-subtitle">Configure how you receive scholarship updates and deadline reminders.</p>
+    <div className="grid gap-4">
+      <section className="rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
+        <h2 className="m-0 text-xl font-bold text-app-text">Notification Settings</h2>
+        <p className="mb-0 mt-2 text-sm text-app-muted">Configure how you receive scholarship updates and deadline reminders.</p>
 
-        <div className="settings-section">
-          <h3>Notification Channels</h3>
-          <div className="settings-grid">
-            <label className="setting-toggle">
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={notificationPreferences.smsEnabled}
-                  onChange={(e) => updatePreference('smsEnabled', e.target.checked)}
-                />
-                <span className="slider" />
-              </div>
-              <div>
-                <strong>SMS Notifications</strong>
-                <p>Receive deadline alerts and status updates via text message</p>
-              </div>
-            </label>
-
-            <label className="setting-toggle">
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={notificationPreferences.emailEnabled}
-                  onChange={(e) => updatePreference('emailEnabled', e.target.checked)}
-                />
-                <span className="slider" />
-              </div>
-              <div>
-                <strong>Email Notifications</strong>
-                <p>Get detailed updates delivered to your inbox</p>
-              </div>
-            </label>
-
-            <label className="setting-toggle">
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={notificationPreferences.inAppEnabled}
-                  onChange={(e) => updatePreference('inAppEnabled', e.target.checked)}
-                />
-                <span className="slider" />
-              </div>
-              <div>
-                <strong>In-App Notifications</strong>
-                <p>See updates and alerts when you're logged in</p>
-              </div>
-            </label>
+        <div className="mt-8 border-t border-app-border pt-6">
+          <h3 className="m-0 text-lg font-semibold text-app-text">Notification Channels</h3>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <SettingToggle
+              checked={preferences.smsEnabled}
+              onChange={(value) => updatePreference('smsEnabled', value)}
+              title="SMS Notifications"
+              description="Receive deadline alerts and status updates via text message"
+            />
+            <SettingToggle
+              checked={preferences.emailEnabled}
+              onChange={(value) => updatePreference('emailEnabled', value)}
+              title="Email Notifications"
+              description="Get detailed updates delivered to your inbox"
+            />
+            <SettingToggle
+              checked={preferences.inAppEnabled}
+              onChange={(value) => updatePreference('inAppEnabled', value)}
+              title="In-App Notifications"
+              description="See updates and alerts when you're logged in"
+            />
           </div>
         </div>
 
-        <div className="settings-section">
-          <h3>Deadline Reminders</h3>
-          <p className="section-subtitle">Choose when you want to be reminded about upcoming deadlines.</p>
-          <div className="settings-grid">
-            <label className="setting-toggle">
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={notificationPreferences.deadlineReminders.oneWeekBefore}
-                  onChange={(e) => updateDeadlineReminder('oneWeekBefore', e.target.checked)}
-                />
-                <span className="slider" />
-              </div>
-              <div>
-                <strong>1 Week Before</strong>
-                <p>Get reminded 7 days before a deadline</p>
-              </div>
-            </label>
-
-            <label className="setting-toggle">
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={notificationPreferences.deadlineReminders.threeDaysBefore}
-                  onChange={(e) => updateDeadlineReminder('threeDaysBefore', e.target.checked)}
-                />
-                <span className="slider" />
-              </div>
-              <div>
-                <strong>3 Days Before</strong>
-                <p>Get a reminder 3 days before a deadline</p>
-              </div>
-            </label>
-
-            <label className="setting-toggle">
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={notificationPreferences.deadlineReminders.dayBefore}
-                  onChange={(e) => updateDeadlineReminder('dayBefore', e.target.checked)}
-                />
-                <span className="slider" />
-              </div>
-              <div>
-                <strong>Day Before</strong>
-                <p>Get a final reminder the day before</p>
-              </div>
-            </label>
+        <div className="mt-8 border-t border-app-border pt-6">
+          <h3 className="m-0 text-lg font-semibold text-app-text">Deadline Reminders</h3>
+          <p className="mb-0 mt-2 text-sm text-app-muted">Choose when you want to be reminded about upcoming deadlines.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <SettingToggle
+              checked={preferences.deadlineReminders.oneWeekBefore}
+              onChange={(value) => updateDeadlineReminder('oneWeekBefore', value)}
+              title="1 Week Before"
+              description="Get reminded 7 days before a deadline"
+            />
+            <SettingToggle
+              checked={preferences.deadlineReminders.threeDaysBefore}
+              onChange={(value) => updateDeadlineReminder('threeDaysBefore', value)}
+              title="3 Days Before"
+              description="Get a reminder 3 days before a deadline"
+            />
+            <SettingToggle
+              checked={preferences.deadlineReminders.dayBefore}
+              onChange={(value) => updateDeadlineReminder('dayBefore', value)}
+              title="Day Before"
+              description="Get a final reminder the day before"
+            />
           </div>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
 import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
 import { getAcademicProgram } from './lib/academicPrograms';
@@ -767,17 +768,45 @@ function App() {
   const eligiblePreview = eligibleScholarships.slice(0, 6);
   const departmentQueue = departmentReviews.filter((entry) => entry.department === currentProfile.department);
 
+  const navigationItems = [
+    { view: 'dashboard', label: 'Dashboard', visible: true },
+    { view: 'explore', label: 'Scholarships', visible: state.viewerRole === 'student' },
+    { view: 'eligibility', label: 'Eligibility Checker', visible: state.viewerRole === 'student' },
+    { view: 'applications', label: 'Applications', visible: state.viewerRole === 'student' },
+    { view: 'vault', label: 'Document Vault', visible: state.viewerRole === 'student' },
+    { view: 'calendar', label: 'Calendar', visible: state.viewerRole === 'student' },
+    { view: 'admin', label: 'OSA Console', visible: state.viewerRole === 'osa_admin' },
+    { view: 'review', label: 'Department Review', visible: state.viewerRole === 'department_chair' },
+    { view: 'settings', label: 'Settings', visible: true },
+  ].filter((item) => item.visible);
+
+  const renderNavigation = (className = '') => (
+    <nav className={`grid gap-2 ${className}`} aria-label="Page navigation">
+      {navigationItems.map((item) => (
+        <button
+          key={item.view}
+          type="button"
+          className={`min-h-11 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition hover:-translate-y-px hover:bg-app-surface focus:outline-none focus:ring-4 focus:ring-blue-500/20 ${state.activeView === item.view ? 'bg-gradient-to-br from-blue-500/95 to-sky-400/70 text-white shadow-sm' : 'bg-app-surface text-app-text'}`}
+          onClick={() => navigate(item.view)}
+          aria-current={state.activeView === item.view ? 'page' : undefined}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+
   if (isBooting) {
     return (
-      <div className="boot-screen">
-        <div className="boot-card card">
-          <span className="eyebrow">ScholarPath AdDU</span>
-          <h1>Preparing your scholarship workspace</h1>
-          <p>Loading a polished front-end review of the manuscript-driven experience.</p>
-          <div className="skeleton-grid">
-            <div className="skeleton-card" />
-            <div className="skeleton-card" />
-            <div className="skeleton-card" />
+      <div className="grid min-h-screen place-items-center bg-app-bg p-5 text-app-text">
+        <div className="w-full max-w-3xl rounded-app border border-app-border bg-app-card p-6 shadow-app backdrop-blur sm:p-8">
+          <span className="inline-flex items-center rounded-full border border-app-border bg-app-surface px-3 py-1 text-xs font-semibold text-app-text">ScholarPath AdDU</span>
+          <h1 className="mt-4 text-2xl font-bold">Preparing your scholarship workspace</h1>
+          <p className="mt-2 text-app-muted">Loading a polished front-end review of the manuscript-driven experience.</p>
+          <div className="mt-6 grid gap-3">
+            <div className="h-[92px] animate-pulse rounded-[18px] bg-app-surface" />
+            <div className="h-[92px] animate-pulse rounded-[18px] bg-app-surface" />
+            <div className="h-[92px] animate-pulse rounded-[18px] bg-app-surface" />
           </div>
         </div>
       </div>
@@ -800,7 +829,7 @@ function App() {
   }
 
   return (
-    <div className={`app-shell ${themeClass}`}>
+    <div className={`min-h-screen max-w-[100vw] overflow-x-hidden bg-app-bg p-3 text-app-text sm:p-5 ${themeClass}`}>
       {profileOnboarding && (
         <AcademicProfileModal
           fullName={profileOnboarding.fullName}
@@ -814,22 +843,21 @@ function App() {
           errorMessage={profileSaveError}
         />
       )}
-      <header className="topbar">
-        <div className="topbar-brand-block">
-          <div className="topbar-brand-row">
-            <img src={logoImage} alt="Ateneo de Davao University logo" className="topbar-logo" />
-            <div className="brand">ScholarPath AdDU</div>
+      <header className="mb-5 flex items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <div className="inline-flex max-w-full items-center gap-2">
+            <img src={logoImage} alt="Ateneo de Davao University logo" className="h-11 w-11 shrink-0 rounded-full border border-white/20 bg-white/10 object-contain p-0.5 sm:h-14 sm:w-14" />
+            <div className="truncate text-lg font-extrabold tracking-wide sm:text-xl">ScholarPath AdDU</div>
           </div>
-          <p className="subtitle"></p>
         </div>
 
-        <div className="topbar-actions">
+        <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
           {state.authUser && (
-            <div className="topbar-identity" title={`${state.authUser.fullName} · ${roleLabels[state.viewerRole]}`}>
-              <span className="topbar-avatar" aria-hidden="true">{getInitials(state.authUser.fullName)}</span>
-              <span className="topbar-identity-copy">
+            <div className="mr-1 inline-flex min-w-0 items-center gap-2" title={`${state.authUser.fullName} · ${roleLabels[state.viewerRole]}`}>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-ateneo to-sky-400 text-xs font-extrabold text-white" aria-hidden="true">{getInitials(state.authUser.fullName)}</span>
+              <span className="hidden min-w-0 leading-tight sm:grid">
                 <strong>{state.authUser.fullName}</strong>
-                <span>{roleLabels[state.viewerRole]}</span>
+                <span className="text-xs text-app-muted">{roleLabels[state.viewerRole]}</span>
               </span>
             </div>
           )}
@@ -840,14 +868,17 @@ function App() {
           />
           <button
             type="button"
-            className="mobile-nav-toggle topbar-menu-toggle"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-app-border bg-app-surface text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 lg:hidden"
             onClick={() => setIsMobileNavOpen((open) => !open)}
             aria-label={isMobileNavOpen ? 'Close page navigation' : 'Open page navigation'}
             aria-expanded={isMobileNavOpen}
           >
-            <span aria-hidden="true">☰</span>
+            {isMobileNavOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
           </button>
-          <button className="secondary-btn" onClick={logout}>Logout</button>
+          <button className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-app-border bg-app-surface px-3 py-2 text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={logout} aria-label="Logout" title="Logout">
+            <LogOut size={16} aria-hidden="true" />
+            <span className="hidden text-sm font-semibold sm:inline">Log out</span>
+          </button>
         </div>
       </header>
 
@@ -855,101 +886,61 @@ function App() {
         <>
           <button
             type="button"
-            className="mobile-nav-backdrop"
+            className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px] lg:hidden"
             onClick={() => setIsMobileNavOpen(false)}
             aria-label="Close page navigation"
           />
-          <aside className="mobile-nav-drawer" aria-label="Page navigation">
-            <nav className="nav-list mobile-nav-list">
-              <button className={state.activeView === 'dashboard' ? 'nav-active' : ''} onClick={() => navigate('dashboard')}>Dashboard</button>
-              {state.viewerRole === 'student' && (
-                <>
-                  <button className={state.activeView === 'explore' ? 'nav-active' : ''} onClick={() => navigate('explore')}>Scholarships</button>
-                  <button className={state.activeView === 'eligibility' ? 'nav-active' : ''} onClick={() => navigate('eligibility')}>Eligibility Checker</button>
-                  <button className={state.activeView === 'applications' ? 'nav-active' : ''} onClick={() => navigate('applications')}>Applications</button>
-                  <button className={state.activeView === 'vault' ? 'nav-active' : ''} onClick={() => navigate('vault')}>Document Vault</button>
-                  <button className={state.activeView === 'calendar' ? 'nav-active' : ''} onClick={() => navigate('calendar')}>Calendar</button>
-                </>
-              )}
-              {state.viewerRole === 'osa_admin' && <button className={state.activeView === 'admin' ? 'nav-active' : ''} onClick={() => navigate('admin')}>OSA Console</button>}
-              {state.viewerRole === 'department_chair' && <button className={state.activeView === 'review' ? 'nav-active' : ''} onClick={() => navigate('review')}>Department Review</button>}
-              <button className={state.activeView === 'settings' ? 'nav-active' : ''} onClick={() => navigate('settings')}>Settings</button>
-            </nav>
+          <aside className="fixed inset-y-0 right-0 z-50 w-[min(21rem,88vw)] overflow-y-auto border-l border-app-border bg-app-card p-5 shadow-2xl lg:hidden" aria-label="Page navigation">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <strong className="text-sm text-app-text">Page navigation</strong>
+              <button type="button" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-app-border bg-app-surface text-app-text" onClick={() => setIsMobileNavOpen(false)} aria-label="Close page navigation"><X size={18} /></button>
+            </div>
+            {renderNavigation()}
           </aside>
         </>
       )}
 
       <button
         type="button"
-        className="theme-toggle floating-theme-toggle"
+        className="fixed bottom-4 left-4 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface text-app-text shadow-card transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 sm:bottom-5 sm:left-5"
         onClick={() => updateState((prev) => ({ theme: prev.theme === 'light' ? 'dark' : 'light' }))}
         aria-label={state.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
         title={state.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
       >
         <span className="theme-toggle-icon" aria-hidden="true">
-          {state.theme === 'light' ? (
-            <svg viewBox="0 0 24 24" fill="currentColor" className="icon-moon">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="currentColor" className="icon-sun">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          )}
+          {state.theme === 'light' ? <Moon className="icon-moon" size={20} /> : <Sun className="icon-sun" size={20} />}
         </span>
       </button>
 
-      <main className="layout">
-        <aside className="sidebar card">
-          <div className="profile-block">
-            <div className="avatar">{currentIdentity.fullName.slice(0, 1)}</div>
+      <main className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="sticky top-5 hidden h-fit rounded-app border border-app-border bg-app-card p-5 shadow-app backdrop-blur lg:block">
+          <div className="flex items-center gap-4 border-b border-app-border pb-4">
+            <div className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-[18px] bg-gradient-to-br from-blue-500/90 to-sky-500/50 text-lg font-extrabold text-white">{currentIdentity.fullName.slice(0, 1)}</div>
             <div>
-              <h2>{currentIdentity.fullName}</h2>
-              <p>{roleLabels[state.viewerRole]} · {currentIdentity.department}</p>
+              <h2 className="m-0 text-base font-semibold text-app-text">{currentIdentity.fullName}</h2>
+              <p className="mt-1 text-sm text-app-muted">{roleLabels[state.viewerRole]} · {currentIdentity.department}</p>
             </div>
           </div>
 
-          <nav className="nav-list">
-            <button className={state.activeView === 'dashboard' ? 'nav-active' : ''} onClick={() => navigate('dashboard')}>Dashboard</button>
-            {state.viewerRole === 'student' && (
-              <>
-                <button className={state.activeView === 'explore' ? 'nav-active' : ''} onClick={() => navigate('explore')}>Scholarships</button>
-                <button className={state.activeView === 'eligibility' ? 'nav-active' : ''} onClick={() => navigate('eligibility')}>Eligibility Checker</button>
-                <button className={state.activeView === 'applications' ? 'nav-active' : ''} onClick={() => navigate('applications')}>Applications</button>
-                <button className={state.activeView === 'vault' ? 'nav-active' : ''} onClick={() => navigate('vault')}>Document Vault</button>
-              </>
-            )}
-            {state.viewerRole === 'osa_admin' && <button className={state.activeView === 'admin' ? 'nav-active' : ''} onClick={() => navigate('admin')}>OSA Console</button>}
-            {state.viewerRole === 'department_chair' && <button className={state.activeView === 'review' ? 'nav-active' : ''} onClick={() => navigate('review')}>Department Review</button>}
-            {state.viewerRole === 'student' && <button className={state.activeView === 'calendar' ? 'nav-active' : ''} onClick={() => navigate('calendar')}>Calendar</button>}
-            <button className={state.activeView === 'settings' ? 'nav-active' : ''} onClick={() => navigate('settings')}>Settings</button>
-          </nav>
+          {renderNavigation('my-4')}
 
-          <div className="sidebar-footer">
-            <div className="mini-stat">
-              <span>Programs</span>
-              <strong>{stats.totalPrograms}</strong>
+          <div className="mt-4 grid gap-2">
+            <div className="flex items-center justify-between gap-3 rounded-[18px] bg-app-surface p-3">
+              <span className="text-xs text-app-muted">Programs</span>
+              <strong className="text-lg text-app-text">{stats.totalPrograms}</strong>
             </div>
-            <div className="mini-stat">
-              <span>Open deadlines</span>
-              <strong>{activeDeadlineCount}</strong>
+            <div className="flex items-center justify-between gap-3 rounded-[18px] bg-app-surface p-3">
+              <span className="text-xs text-app-muted">Open deadlines</span>
+              <strong className="text-lg text-app-text">{activeDeadlineCount}</strong>
             </div>
-            <div className="mini-stat">
-              <span>Unread alerts</span>
-              <strong>{stats.unreadNotifications}</strong>
+            <div className="flex items-center justify-between gap-3 rounded-[18px] bg-app-surface p-3">
+              <span className="text-xs text-app-muted">Unread alerts</span>
+              <strong className="text-lg text-app-text">{stats.unreadNotifications}</strong>
             </div>
           </div>
         </aside>
 
-        <section className="content-stack">
+        <section className="grid min-w-0 gap-5">
           {state.activeView === 'dashboard' && (
             <DashboardViewPage
               profile={currentIdentity}

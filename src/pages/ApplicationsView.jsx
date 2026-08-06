@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Card, EmptyState } from '../components/pageParts';
+import { Button, ModalShell, StatusBadge } from '../components/ui';
 import { getApplicationProgress } from '../lib/eligibility';
 import { fmtDate, toPercent } from '../lib/formatters';
 
@@ -26,33 +27,33 @@ export default function ApplicationsView({ applications, documents, scholarships
     link.click();
   };
 
-  return <div className="view-stack">
-    <div className="page-header">
+  return <div className="grid gap-4">
+    <div className="flex flex-col items-start justify-between gap-4 md:flex-row">
       <div><span className="eyebrow">Student workspace</span><h1>Applications</h1><p>Track every scholarship application from draft to final decision.</p></div>
-      <button className="secondary-btn" onClick={onOpenVault}>Open Document Vault</button>
+      <Button onClick={onOpenVault}>Open Document Vault</Button>
     </div>
-    <section className="stats-grid application-stats">
-      <article className="card stat-card"><span>Total applications</span><strong>{counts.total}</strong><p>All tracked scholarships</p></article>
-      <article className="card stat-card"><span>In progress</span><strong>{counts.active}</strong><p>Drafts and reviews</p></article>
-      <article className="card stat-card"><span>Drafts</span><strong>{counts.drafts}</strong><p>Ready to complete</p></article>
-      <article className="card stat-card"><span>Completed</span><strong>{counts.completed}</strong><p>Approved or rejected</p></article>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article className="rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>Total applications</span><strong>{counts.total}</strong><p>All tracked scholarships</p></article>
+      <article className="rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>In progress</span><strong>{counts.active}</strong><p>Drafts and reviews</p></article>
+      <article className="rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>Drafts</span><strong>{counts.drafts}</strong><p>Ready to complete</p></article>
+      <article className="rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>Completed</span><strong>{counts.completed}</strong><p>Approved or rejected</p></article>
     </section>
     <Card title="Your applications">
-      <div className="page-filters"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search applications" aria-label="Search applications" /><select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter applications by status"><option value="all">All statuses</option>{['Draft', 'Submitted', 'Under Review', 'For Verification', 'Approved', 'Rejected'].map((item) => <option key={item}>{item}</option>)}</select></div>
-      <div className="list-stack">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search applications" aria-label="Search applications" /><select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter applications by status"><option value="all">All statuses</option>{['Draft', 'Submitted', 'Under Review', 'For Verification', 'Approved', 'Rejected'].map((item) => <option key={item}>{item}</option>)}</select></div>
+      <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
         {filtered.length ? filtered.map((entry) => {
           const scholarship = scholarships.find((item) => item.id === entry.scholarshipId);
           const canSubmit = entry.status === 'Draft';
-          return <article key={entry.id} className="mini-card application-card">
-            <div className="card-head"><div><h3>{entry.scholarshipTitle}</h3><p>{scholarship?.category || 'Scholarship'} · Updated {fmtDate(entry.updatedAt)}</p></div><span className={`status-pill ${statusTone[entry.status] || 'info'}`}>{entry.status}</span></div>
-            <div className="progress-track"><div style={{ width: `${getApplicationProgress(entry.status)}%` }} /></div>
-            <div className="meta-grid"><span><strong>Progress</strong> {toPercent(getApplicationProgress(entry.status))}</span><span><strong>Documents</strong> {entry.documentStatus}</span><span><strong>Deadline</strong> {scholarship ? fmtDate(scholarship.deadline) : 'N/A'}</span></div>
+          return <article key={entry.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
+            <div className="flex items-start justify-between gap-4"><div><h3>{entry.scholarshipTitle}</h3><p>{scholarship?.category || 'Scholarship'} · Updated {fmtDate(entry.updatedAt)}</p></div><StatusBadge tone={statusTone[entry.status] || 'info'}>{entry.status}</StatusBadge></div>
+            <div className="h-2 overflow-hidden rounded-full bg-app-muted-surface"><div style={{ width: `${getApplicationProgress(entry.status)}%` }} /></div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-app-muted"><span><strong>Progress</strong> {toPercent(getApplicationProgress(entry.status))}</span><span><strong>Documents</strong> {entry.documentStatus}</span><span><strong>Deadline</strong> {scholarship ? fmtDate(scholarship.deadline) : 'N/A'}</span></div>
             <p>{entry.notes}</p>
-           <div className="button-row wrap"><button className="secondary-btn" type="button" onClick={() => setSelectedId(entry.id)}>View details</button>{canSubmit && <button className="primary-btn" type="button" onClick={() => { if (window.confirm('Submit this application for review? You can no longer edit this draft after submission.')) onSubmit(entry.id); }}>Submit application</button>}<button className="export-btn" type="button" onClick={() => exportReport(entry)}>Export report</button></div>
+           <div className="flex flex-wrap items-center gap-3 wrap"><Button type="button" onClick={() => setSelectedId(entry.id)}>View details</Button>{canSubmit && <Button variant="primary" type="button" onClick={() => { if (window.confirm('Submit this application for review? You can no longer edit this draft after submission.')) onSubmit(entry.id); }}>Submit application</Button>}<button className="inline-flex min-h-10 items-center justify-center rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" type="button" onClick={() => exportReport(entry)}>Export report</button></div>
           </article>;
         }) : <EmptyState title={applications.length ? 'No matching applications' : 'No applications yet'} description={applications.length ? 'Try a different search or status filter.' : 'Track a scholarship from the explorer to create your first application.'} />}
       </div>
     </Card>
-    {selected && <div className="modal-overlay" role="presentation" onClick={() => setSelectedId(null)}><div className="card application-detail-modal" role="dialog" aria-modal="true" aria-label="Application details" onClick={(e) => e.stopPropagation()}><div className="section-head"><h2>{selected.scholarshipTitle}</h2><button className="secondary-btn" onClick={() => setSelectedId(null)}>Close</button></div><p>{selected.notes}</p><div className="meta-grid"><span><strong>Status</strong> {selected.status}</span><span><strong>Attached documents</strong> {selected.attachedDocuments?.length || 0}</span><span><strong>Submitted</strong> {selected.submittedAt ? fmtDate(selected.submittedAt) : 'Not yet'}</span></div><h3>Linked vault files</h3>{selected.attachedDocuments?.length ? <ul className="detail-list">{selected.attachedDocuments.map((id) => <li key={id}>{documents.find((doc) => doc.id === id)?.title || 'Document unavailable'}</li>)}</ul> : <p className="muted-copy">No documents attached yet.</p>}</div></div>}
+    {selected && <ModalShell title={selected.scholarshipTitle} onClose={() => setSelectedId(null)} className="application-detail-modal"><p>{selected.notes}</p><div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-app-muted"><span><strong>Status</strong> {selected.status}</span><span><strong>Attached documents</strong> {selected.attachedDocuments?.length || 0}</span><span><strong>Submitted</strong> {selected.submittedAt ? fmtDate(selected.submittedAt) : 'Not yet'}</span></div><h3>Linked vault files</h3>{selected.attachedDocuments?.length ? <ul className="grid gap-2 pl-5 text-app-muted">{selected.attachedDocuments.map((id) => <li key={id}>{documents.find((doc) => doc.id === id)?.title || 'Document unavailable'}</li>)}</ul> : <p className="text-app-muted">No documents attached yet.</p>}</ModalShell>}
   </div>;
 }

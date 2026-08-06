@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, CalendarPlus, PartyPopper, X } from 'lucide-react';
 import { fmtDate } from '../lib/formatters';
 
 export default function CalendarView({ scholarships, customDeadlines = [], onAddCustomDeadline, onDeleteCustomDeadline }) {
@@ -93,15 +94,15 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
   return (
-    <div className="view-stack">
-      <section className="card">
+    <div className="grid gap-4">
+      <section className="rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
         <h2>Scholarship Deadline Calendar</h2>
-        <div className="calendar-container">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <div className="calendar-grid">
             <div className="calendar-nav">
-              <button type="button" className="calendar-nav-btn" onClick={handlePrevMonth} aria-label="Previous month">←</button>
-              <h3 className="calendar-month">{monthName}</h3>
-              <button type="button" className="calendar-nav-btn" onClick={handleNextMonth} aria-label="Next month">→</button>
+              <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-app-border bg-app-surface text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={handlePrevMonth} aria-label="Previous month"><ArrowLeft size={18} /></button>
+              <h3 className="m-0 text-center text-lg font-semibold text-app-text">{monthName}</h3>
+              <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-app-border bg-app-surface text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={handleNextMonth} aria-label="Next month"><ArrowRight size={18} /></button>
             </div>
             <div className="calendar-weekdays">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
@@ -131,12 +132,12 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
             </div>
           </div>
 
-          <div className="upcoming-deadlines">
+          <div className="grid content-start gap-4 rounded-[18px] border border-app-border bg-app-surface p-4">
             <div className="upcoming-deadlines-header">
               <h3>{selectedDate ? `Deadlines on ${new Date(displayYear, displayMonth, selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Upcoming Deadlines'}</h3>
               {!selectedDate && (
-                <button type="button" className="add-deadline-btn" onClick={() => setShowAddForm(!showAddForm)}>
-                  {showAddForm ? 'Cancel' : '+ Add Reminder'}
+                <button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-app-border bg-app-card px-3 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={() => setShowAddForm(!showAddForm)}>
+                  {showAddForm ? 'Cancel' : <><CalendarPlus size={16} /> Add Reminder</>}
                 </button>
               )}
             </div>
@@ -173,7 +174,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
                             onClick={() => onDeleteCustomDeadline(customDeadline.id)}
                             aria-label="Delete deadline"
                           >
-                            ✕
+                            <X size={16} />
                           </button>
                         </div>
                       </div>
@@ -201,7 +202,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
                   })}
                 </div>
               ) : (
-                <p className="no-deadlines">No upcoming deadlines 🎉</p>
+                <p className="no-deadlines">No upcoming deadlines <PartyPopper size={16} aria-hidden="true" /></p>
               )
             )}
           </div>
@@ -210,7 +211,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
 
       {showAddForm && !selectedDate && (
         <div className="deadline-modal-backdrop" role="presentation" onClick={() => setShowAddForm(false)}>
-          <div className="deadline-modal card" role="dialog" aria-modal="true" aria-labelledby="deadline-modal-title" onClick={(event) => event.stopPropagation()}>
+          <div className="w-[min(100%,34rem)] rounded-app border bg-app-card p-5 shadow-app backdrop-blur" role="dialog" aria-modal="true" aria-labelledby="deadline-modal-title" onClick={(event) => event.stopPropagation()}>
             <div className="deadline-modal-head">
               <div>
                 <span className="eyebrow">Custom reminder</span>
@@ -218,7 +219,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
                 <p>Use this for document prep, essay drafting, and other internal deadlines that need a reminder a week or five days ahead.</p>
               </div>
               <button type="button" className="deadline-modal-close" onClick={() => setShowAddForm(false)} aria-label="Close reminder modal">
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -245,9 +246,9 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
               </label>
               <p className="deadline-form-note">Choose today or a future date. We’ll remind you 7 and 5 days before.</p>
               {formError && <p className="deadline-form-error">{formError}</p>}
-              <div className="button-row">
-                <button type="button" className="secondary-btn" onClick={() => { setShowAddForm(false); setFormError(''); }}>Cancel</button>
-                <button type="submit" className="primary-btn" disabled={!formTitle.trim() || !formDate || formDate < todayInputValue}>Create Reminder</button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => { setShowAddForm(false); setFormError(''); }}>Cancel</button>
+                <button type="submit" className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" disabled={!formTitle.trim() || !formDate || formDate < todayInputValue}>Create Reminder</button>
               </div>
             </form>
           </div>

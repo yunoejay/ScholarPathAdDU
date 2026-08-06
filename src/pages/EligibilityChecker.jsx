@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import { academicPrograms } from '../lib/academicPrograms';
 import { rankScholarships } from '../lib/eligibility';
 import { Card, EmptyState, ScholarshipRow } from '../components/pageParts';
@@ -134,14 +135,14 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
   }, [editableProfile, scholarships]);
 
   return (
-    <div className="view-stack">
-      <section className="page-header card">
+    <div className="grid gap-4">
+      <section className="flex flex-col items-start justify-between gap-4 md:flex-row rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
         <div>
           <span className="eyebrow">Smart Eligibility Checker</span>
           <h2>Check QPI, income, and degree eligibility</h2>
           <p>Rules follow the forward-chaining approach described in the manuscript, including exclusion overrides. The backend will be wired in later.</p>
         </div>
-        <div className="search-summary">
+        <div className="grid w-full gap-3 sm:w-auto">
           <div>
             <strong>{result.length}</strong>
             <span>Eligible grants</span>
@@ -149,46 +150,46 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
         </div>
       </section>
 
-      <section className="split-grid">
+      <section className="grid gap-4 xl:grid-cols-2">
         <Card title="Student profile input">
-          <div className="form-grid">
+          <div className="grid gap-4">
             <label>
               <span>QPI</span>
-              <div className="number-input">
-                <button type="button" className="number-btn dec" onClick={() => {
+              <div className="flex items-center gap-3">
+                <button type="button" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-app-border bg-app-surface text-app-text" onClick={() => {
                   let value = Number(qpiText) || Number(editableProfile.qpi) || 0.00;
                   value = Math.round((value - 0.01) * 100) / 100;
                   if (value < 0.00) value = 0.00;
                   setQpiText(value.toFixed(2));
                   updateEditableProfile({ qpi: value });
-                }}>−</button>
+                }}><Minus size={16} /></button>
                 <input type="text" inputMode="decimal" value={qpiText} onChange={(event) => commitQpi(event.target.value)} onBlur={clampQpi} placeholder="0.00" />
-                <button type="button" className="number-btn inc" onClick={() => {
+                <button type="button" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-app-border bg-app-surface text-app-text" onClick={() => {
                   let value = Number(qpiText) || Number(editableProfile.qpi) || 0.00;
                   value = Math.round((value + 0.01) * 100) / 100;
                   if (value > 4.00) value = 4.00;
                   setQpiText(value.toFixed(2));
                   updateEditableProfile({ qpi: value });
-                }}>+</button>
+                }}><Plus size={16} /></button>
               </div>
               {isQpiOutOfRange && <span className="field-warning">QPI should be between 0.00 and 4.00.</span>}
             </label>
             <label>
               <span>Household income</span>
-              <div className="number-input">
-                <button type="button" className="number-btn dec" onClick={() => {
+              <div className="flex items-center gap-3">
+                <button type="button" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-app-border bg-app-surface text-app-text" onClick={() => {
                   let value = Number(incomeText) || Number(editableProfile.householdIncome) || 0;
                   value = value - 1000;
                   setIncomeText(String(value));
                   updateEditableProfile({ householdIncome: value });
-                }}>−</button>
+                }}><Minus size={16} /></button>
                 <input type="text" inputMode="numeric" value={incomeText} onChange={(event) => commitIncome(event.target.value)} onBlur={clampIncome} placeholder="0" />
-                <button type="button" className="number-btn inc" onClick={() => {
+                <button type="button" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-app-border bg-app-surface text-app-text" onClick={() => {
                   let value = Number(incomeText) || Number(editableProfile.householdIncome) || 0;
                   value = value + 1000;
                   setIncomeText(String(value));
                   updateEditableProfile({ householdIncome: value });
-                }}>+</button>
+                }}><Plus size={16} /></button>
               </div>
             </label>
             <SelectPicker
@@ -198,18 +199,18 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
               options={academicPrograms.map((program) => ({ value: program.value, label: program.label }))}
               idPrefix="eligibility-degree"
             />
-            <label className="toggle-chip inline">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-app-border bg-app-surface p-3 text-sm font-semibold text-app-text">
               <input type="checkbox" checked={editableProfile.hasActiveGovernmentGrant} onChange={(event) => updateEditableProfile({ hasActiveGovernmentGrant: event.target.checked })} />
               Active government grant
             </label>
           </div>
-          <div className="eligibility-actions">
-            <div className={`temporary-profile-note ${hasTemporaryChanges ? 'temporary-profile-note--active' : ''}`}>
+          <div className="mt-6 grid gap-3">
+            <div className={`rounded-xl border p-3 text-sm text-app-muted ${hasTemporaryChanges ? 'border-amber-400/30 bg-amber-500/10' : 'border-app-border bg-app-surface'}`}>
               {hasTemporaryChanges ? 'Using temporary checker values. Your saved profile has not changed.' : 'Using your saved profile values.'}
             </div>
-            <div className="button-row">
-              {hasTemporaryChanges && <button type="button" className="secondary-btn" onClick={resetToSavedProfile}>Reset to saved profile</button>}
-              <button type="button" className="primary-btn" onClick={handleSaveProfile} disabled={!hasTemporaryChanges || isSavingProfile}>
+            <div className="flex flex-wrap items-center gap-3">
+              {hasTemporaryChanges && <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={resetToSavedProfile}>Reset to saved profile</button>}
+              <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={handleSaveProfile} disabled={!hasTemporaryChanges || isSavingProfile}>
                 {isSavingProfile ? 'Saving…' : 'Save as my profile'}
               </button>
             </div>
@@ -218,7 +219,7 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
         </Card>
 
         <Card title="Matched scholarships">
-          <div className="list-stack">
+          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {result.length ? result.map((scholarship) => (
               <ScholarshipRow key={scholarship.id} scholarship={scholarship} onApply={onApply} compact />
             )) : <EmptyState title="No matches for this profile" description="Adjust QPI, income, degree, or grant status to see matching scholarships here." />}

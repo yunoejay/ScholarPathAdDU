@@ -184,6 +184,38 @@ export const updateUserProfile = async (userId, { degreeProgram, department, stu
   if (!hasSupabaseConfig || !supabase || !userId) return { success: true, fallback: true };
 
   try {
+    // Auth users created before the profile trigger was installed may not have
+    // a matching row yet. Create that parent row before writing the QPI child
+    // record so annual_qpi_records_user_id_fkey can be satisfied.
+    const { data: authUserResult, error: authUserError } = await supabase.auth.getUser();
+    if (authUserError) {
+      return { success: false, fallback: false, message: getAuthErrorMessage(authUserError, 'Unable to verify your account.') };
+    }
+
+    const authUser = authUserResult?.user;
+    if (!authUser || authUser.id !== userId) {
+      return { success: false, fallback: false, message: 'Your session has expired. Please sign in again.' };
+    }
+
+    const metadata = authUser.user_metadata || {};
+    const role = ['student', 'osa_admin', 'department_chair'].includes(metadata.role)
+      ? metadata.role
+      : 'student';
+    const fullName = metadata.full_name?.trim() || authUser.email?.split('@')[0] || 'ScholarPath user';
+
+    const { error: profileEnsureError } = await supabase
+      .from('profiles')
+      .upsert({
+        user_id: userId,
+        full_name: fullName,
+        role,
+        email: authUser.email || null,
+        student_number: metadata.student_id?.trim() || studentNumber || null,
+      }, { onConflict: 'user_id', ignoreDuplicates: true });
+    if (profileEnsureError) {
+      return { success: false, fallback: false, message: getAuthErrorMessage(profileEnsureError, 'Unable to prepare your academic profile.') };
+    }
+
     const { error: historyError } = await supabase
       .from('annual_qpi_records')
       .upsert({ user_id: userId, academic_year: getCurrentAcademicYear(), qpi }, { onConflict: 'user_id,academic_year' });

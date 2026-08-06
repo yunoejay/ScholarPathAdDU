@@ -87,7 +87,17 @@ The present implementation is organized as follows:
 - `src/components/` contains shared UI building blocks, modal/page-part helpers, notification cards, announcements, and the `NotificationDropdown` center.
 - `src/lib/` contains the domain logic, formatting helpers, authentication helpers, eligibility rules, demo data, backend-status helpers, academic-program taxonomy, and Supabase setup.
 - `supabase/schema.sql` is the reference schema for backend-aligned work.
-- `src/styles.css` defines the responsive visual language, Ateneo blue identity, dark theme, and `.theme-light` override for the light theme.
+- `src/tailwind.css` is the primary Tailwind entry point and contains the shared theme primitives.
+- `src/styles.css` contains component-specific CSS, browser behavior, pseudo-elements, keyframes, and rules that are not practical as utilities.
+
+## Styling Conventions
+The interface uses Tailwind CSS alongside the existing component stylesheet:
+
+- Import `src/tailwind.css` before `src/styles.css` in `src/main.jsx`.
+- Use Tailwind utility classes for layout, spacing, typography, colors, responsive behavior, and component states.
+- Prefer the shared tokens in `tailwind.config.js`, including `bg-app-card`, `bg-app-surface`, `border-app-border`, `text-app-text`, `text-app-muted`, `shadow-app`, and `rounded-app`.
+- Before adding a selector to `src/styles.css`, check whether a Tailwind utility, theme token, or reusable React component can solve the need instead.
+- Keep `postcss.config.js` and `tailwind.config.js` aligned with the local Vite build; do not add a global styling dependency for a one-off rule.
 
 
 ## Editing Principles
@@ -173,6 +183,15 @@ Prefer these checks when appropriate:
 
 
 If validation fails, fix the same slice before widening the scope.
+
+## Pre-Push Checklist
+Before pushing a change:
+
+- Run `npm run build` and resolve any build errors.
+- Confirm `package-lock.json` is updated whenever `package.json` dependencies change.
+- Check that demo mode still loads when Supabase environment variables are absent.
+- Review `git diff` for accidental changes, generated secrets, or unrelated files.
+- Smoke-test the affected student or reviewer flow in the Vite app when the change is visual or interactive.
 
 
 ## Documentation Expectations

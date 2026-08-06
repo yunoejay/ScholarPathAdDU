@@ -1,5 +1,6 @@
 import { applicationStatuses, verificationStatuses } from '../lib/constants';
-import { Card, EmptyState, AnnouncementItem, NotificationItem, StatCard } from '../components/pageParts';
+import { AnnouncementItem, NotificationItem, StatCard } from '../components/pageParts';
+import { Button, Card, EmptyState, FormField, Panel, StatusBadge } from '../components/ui';
 import { fmtDate } from '../lib/formatters';
 
 export default function AdminConsole({ applications, documents, announcements, notifications, onChangeApplication, onChangeDocument, onCreateAnnouncement, onMarkRead }) {
@@ -7,43 +8,40 @@ export default function AdminConsole({ applications, documents, announcements, n
   const reviewApplications = applications.filter((entry) => entry.status === 'Submitted' || entry.status === 'Under Review' || entry.status === 'For Verification');
 
   return (
-    <div className="view-stack">
-      <section className="stats-grid">
+    <div className="grid gap-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pending applications" value={reviewApplications.length} note="Workflow queue for OSA" />
         <StatCard label="Documents for review" value={pendingDocuments.length} note="Blocking final application processing" />
         <StatCard label="Announcements" value={announcements.length} note="Broadcast queue and updates" />
         <StatCard label="Active notifications" value={notifications.length} note="Status mutations trigger alerts" />
       </section>
 
-      <section className="card role-intro admin-intro">
+      <section className="flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row">
         <div>
-          <span className="eyebrow">OSA console</span>
-          <h3>Review applications, verify documents, and publish announcements.</h3>
-          <p>This view is preloaded with queue items so it stays visible even before backend integration.</p>
+          <span className="text-xs font-bold uppercase tracking-[0.14em] text-ateneo-bright">OSA console</span>
+          <h3 className="mt-1">Review applications, verify documents, and publish announcements.</h3>
+          <p className="mt-1 text-sm text-app-muted">This view is preloaded with queue items so it stays visible even before backend integration.</p>
         </div>
-        <div className="role-badges">
-          <span className="pill">Applications</span>
-          <span className="pill">Documents</span>
-          <span className="pill">Announcements</span>
-          <span className="pill">Notifications</span>
+        <div className="flex flex-wrap gap-2">
+          {['Applications', 'Documents', 'Announcements', 'Notifications'].map((label) => <StatusBadge key={label}>{label}</StatusBadge>)}
         </div>
       </section>
 
-      <section className="split-grid">
+      <section className="grid gap-4 xl:grid-cols-2">
         <Card title="Application review queue">
-          <div className="list-stack">
+          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {reviewApplications.length ? reviewApplications.map((entry) => (
-              <article key={entry.id} className="mini-card">
-                <div className="card-head">
+              <article key={entry.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3>{entry.scholarshipTitle}</h3>
                     <p>{entry.status} · Updated {fmtDate(entry.updatedAt)}</p>
                   </div>
-                  <span className="pill">Admin</span>
+                  <StatusBadge>Admin</StatusBadge>
                 </div>
-                <div className="button-row wrap">
+                <div className="flex flex-wrap items-center gap-3">
                   {applicationStatuses.filter((status) => status !== entry.status).map((status) => (
-                    <button key={status} className="secondary-btn" onClick={() => onChangeApplication(entry.id, status)}>{status}</button>
+                    <Button key={status} type="button" onClick={() => onChangeApplication(entry.id, status)}>{status}</Button>
                   ))}
                 </div>
               </article>
@@ -52,19 +50,19 @@ export default function AdminConsole({ applications, documents, announcements, n
         </Card>
 
         <Card title="Document verification">
-          <div className="list-stack">
+          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {pendingDocuments.length ? pendingDocuments.map((doc) => (
-              <article key={doc.id} className="mini-card">
-                <div className="card-head">
+              <article key={doc.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3>{doc.title}</h3>
                     <p>{doc.fileName} · {doc.documentType}</p>
                   </div>
-                  <span className="status-pill warning">Pending</span>
+                  <StatusBadge tone="warning">Pending</StatusBadge>
                 </div>
-                <div className="button-row wrap">
+                <div className="flex flex-wrap items-center gap-3">
                   {verificationStatuses.map((status) => (
-                    <button key={status} className="secondary-btn" onClick={() => onChangeDocument(doc.id, status)}>{status}</button>
+                    <Button key={status} type="button" onClick={() => onChangeDocument(doc.id, status)}>{status}</Button>
                   ))}
                 </div>
               </article>
@@ -73,32 +71,29 @@ export default function AdminConsole({ applications, documents, announcements, n
         </Card>
       </section>
 
-      <section className="split-grid">
+      <section className="grid gap-4 xl:grid-cols-2">
         <Card title="Broadcast announcement">
-          <form className="form-grid stacked" onSubmit={onCreateAnnouncement}>
-            <label>
-              <span>Audience</span>
+          <form className="grid gap-4" onSubmit={onCreateAnnouncement}>
+            <FormField label="Audience">
               <select name="announcementAudience">
                 <option>Students</option>
                 <option>OSA Admin</option>
                 <option>Department Chairs</option>
                 <option>All users</option>
               </select>
-            </label>
-            <label>
-              <span>Title</span>
+            </FormField>
+            <FormField label="Title">
               <input name="announcementTitle" placeholder="Application window update" />
-            </label>
-            <label>
-              <span>Body</span>
+            </FormField>
+            <FormField label="Body">
               <textarea name="announcementBody" rows="4" placeholder="Share scholarship deadlines, reviews, or office notices here." />
-            </label>
-            <button className="primary-btn" type="submit">Publish announcement</button>
+            </FormField>
+            <Button variant="primary" type="submit">Publish announcement</Button>
           </form>
         </Card>
 
         <Card title="Recent announcements">
-          <div className="list-stack">
+          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {announcements.length ? announcements.map((entry) => (
               <AnnouncementItem key={entry.id} entry={entry} />
             )) : <EmptyState title="No announcements yet" description="Publish scholarship updates and office notices from this panel." />}
@@ -106,9 +101,9 @@ export default function AdminConsole({ applications, documents, announcements, n
         </Card>
       </section>
 
-      <section className="split-grid">
+      <section className="grid gap-4 xl:grid-cols-2">
         <Card title="Notification feed">
-          <div className="list-stack">
+          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {notifications.length ? notifications.slice(0, 3).map((entry) => (
               <NotificationItem key={entry.id} entry={entry} onMarkRead={onMarkRead} />
             )) : <EmptyState title="No notification activity" description="Status changes and deadline alerts will appear here." />}
@@ -116,14 +111,14 @@ export default function AdminConsole({ applications, documents, announcements, n
         </Card>
 
         <Card title="OSA workflow snapshot">
-          <div className="mini-card workflow-snapshot">
+          <Panel className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3">
             <h3>Today’s queue</h3>
-            <p>{reviewApplications.length} application(s) awaiting review · {pendingDocuments.length} document(s) pending verification</p>
-            <div className="meta-grid">
+            <p className="text-sm text-app-muted">{reviewApplications.length} application(s) awaiting review · {pendingDocuments.length} document(s) pending verification</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-app-muted">
               <span><strong>Submitters</strong> Students</span>
               <span><strong>Audience</strong> Internal staff</span>
             </div>
-          </div>
+          </Panel>
         </Card>
       </section>
     </div>
