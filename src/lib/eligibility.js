@@ -1,64 +1,158 @@
-const DEGREE_FALLBACK = 'ALL';
-
-const toNumber = (value) => Number(String(value ?? '').replace(/[^\d.-]/g, '')) || 0;
 const toDate = (value) => new Date(value);
 const daysBetween = (dateA, dateB) => Math.round((dateB.getTime() - dateA.getTime()) / 86400000);
 
+export const GENERAL_POOL_INCOME_CEILING = 250000;
+export const GENERAL_POOL_QPI_FLOOR = 2.5;
+export const GENERAL_POOL_EXCLUDED_DEGREES = ['BS Nursing', 'BS Architecture'];
+
 export const getDeadlineStatus = (deadline, today = new Date()) => {
+  if (!deadline) return { label: 'Rolling / TBA', tone: 'neutral', remainingDays: null };
   const due = toDate(deadline);
   const remainingDays = daysBetween(today, due);
-
-  if (Number.isNaN(due.getTime())) {
-    return { label: 'Unknown', tone: 'neutral', remainingDays: null };
-  }
-
+  if (Number.isNaN(due.getTime())) return { label: 'Unknown', tone: 'neutral', remainingDays: null };
   if (remainingDays < 0) return { label: 'Closed', tone: 'danger', remainingDays };
   if (remainingDays <= 3) return { label: 'Urgent', tone: 'warning', remainingDays };
   if (remainingDays <= 14) return { label: 'Active', tone: 'success', remainingDays };
   return { label: 'Upcoming', tone: 'info', remainingDays };
 };
 
-export const getScholarshipFit = (profile, scholarship) => {
-  const qpiMargin = Number(profile.qpi) - Number(scholarship.minimumQpi);
-  const incomeMargin = Number(scholarship.maximumIncome) - Number(profile.householdIncome);
-  const normalizedIncome = incomeMargin / 10000;
-  return Number(((qpiMargin * 0.5) + (normalizedIncome * 0.5)).toFixed(2));
+export const checkUniversalGate = (profile) => {
+  const reasons = [];
+  if (profile.citizenship && profile.citizenship !== 'Filipino') {
+    reasons.push('Non-Filipino citizenship — every program requires Filipino citizenship.');
+  }
+  return { passed: reasons.length === 0, reasons };
 };
 
-export const evaluateScholarship = (profile, scholarship) => {
+export const checkAdduInternalGate = (profile) => {
+  const reasons = [];
+  if (profile.isOnPrepaidPlan) reasons.push('On a prepaid tuition-and-fee plan — excluded from AdDU financial aid.');
+  if (profile.hasSiblingOnAid) reasons.push('A sibling is currently on AdDU financial aid — automatically waitlisted.');
+  if (profile.hasOtherActiveScholarship) reasons.push('Holds another scholarship without College Scholarship Committee approval.');
+  if (profile.academicStanding === 'disqualified') reasons.push('Academically disqualified students are ineligible for AdDU-administered aid.');
+  return { passed: reasons.length === 0, reasons };
+};
+
+export const getScholarshipFit = (profile, scholarship) => {
+  if (scholarship.minimumQpi == null || scholarship.maximumIncome == null) return null;
+  const qpiMargin = Number(profile.qpi) - Number(scholarship.minimumQpi);
+  const incomeMargin = Number(scholarship.maximumIncome) - Number(profile.householdIncome);
+  return Number(((qpiMargin * 0.5) + ((incomeMargin / 10000) * 0.5)).toFixed(2));
+};
+
+const evaluateGeneralPool = (profile, scholarship) => {
   const reasons = [];
   const qpi = Number(profile.qpi);
   const income = Number(profile.householdIncome);
-  const degree = profile.degreeProgram;
-  const activeGovGrant = Boolean(profile.hasActiveGovernmentGrant);
+  const minQpi = scholarship.minimumQpi ?? GENERAL_POOL_QPI_FLOOR;
+  const maxIncome = scholarship.maximumIncome ?? GENERAL_POOL_INCOME_CEILING;
+  if (qpi < minQpi) reasons.push(`Needs QPI ${minQpi.toFixed(2)}+.`);
+  if (income > maxIncome) reasons.push(`Household income must be at or below \u20b1${maxIncome.toLocaleString()}.`);
+  if (GENERAL_POOL_EXCLUDED_DEGREES.includes(profile.degreeProgram)) {
+    reasons.push(`${profile.degreeProgram} is excluded from the general scholarship pool.`);
+  }
+  return reasons;
+};
+
+const evaluateHonorsTrack = (profile) => {
+  const reasons = [];
+  if (profile.applicantType !== 'first-year') reasons.push('Open only to incoming AdDU first-year students.');
+  if (!profile.isHonorsGraduate) reasons.push('Requires official Valedictorian or Salutatorian standing.');
+  if (!profile.graduatingClassSize || Number(profile.graduatingClassSize) < 80) reasons.push('Graduating class must have at least 80 students.');
+  return reasons;
+};
+
+const evaluateWorkStudy = (profile, scholarship) => {
+  const reasons = [];
+  const eligibleDegrees = scholarship.eligibleDegrees || [];
+  if (!eligibleDegrees.includes(profile.degreeProgram)) {
+    reasons.push(`Currently limited to ${eligibleDegrees.join(' and ')}.`);
+  }
+  return reasons;
+};
+
+const GOV_EVALUATORS = {
+  CHED_SSP: () => ['SSP is reserved for SUC/LUC students \u2014 AdDU is a private HEI, so this program does not apply.'],
+  CHED_DEFAULT: (profile) => {
+    const reasons = [];
+    if (Number(profile.householdIncome) > 500000) reasons.push('Exceeds the CHED income ceiling (confirm with CHEDRO XI for the current cycle).');
+    return reasons;
+  },
+  DOST_FRESHMAN: (profile) => {
+    const reasons = [];
+    const isIncomingFreshman = profile.applicantType === 'first-year' && Number(profile.yearLevel) <= 1;
+    if (!isIncomingFreshman) reasons.push('Only open to incoming first-year students with no prior college units.');
+    if (profile.hsStrand !== 'STEM' && Number(profile.hsAverage || 0) < 95) reasons.push('Non-STEM strand applicants must be in the top 5% of their graduating class.');
+    return reasons;
+  },
+  DOST_JLAP: (profile) => {
+    const reasons = [];
+    if (profile.applicantType === 'first-year') reasons.push('JLAP/JLSS targets continuing (2nd year+) students, not incoming freshmen.');
+    reasons.push('__INFO__Opens periodically \u2014 confirm current availability with DOST-SEI.');
+    return reasons;
+  },
+  GSIS: (profile) => {
+    if (!profile.sponsorTies?.gsisMemberDependent) return ['Requires a parent/guardian who is an active GSIS member.'];
+    return [];
+  },
+  AFPEBSO: (profile) => {
+    if (!profile.sponsorTies?.afpDependent) return ['Requires the applicant to be a dependent of AFP/CAA personnel.'];
+    return [];
+  },
+  US_VA: (profile) => {
+    if (!profile.sponsorTies?.usVeteranDependent) return ['Requires qualifying US veteran dependent status.'];
+    return [];
+  },
+};
+
+const resolveGovEvaluator = (govProgram) => {
+  if (govProgram === 'CHED_SSP') return GOV_EVALUATORS.CHED_SSP;
+  if (typeof govProgram === 'string' && govProgram.startsWith('CHED_')) return GOV_EVALUATORS.CHED_DEFAULT;
+  if (govProgram === 'DOST_MERIT' || govProgram === 'DOST_RA7687') return GOV_EVALUATORS.DOST_FRESHMAN;
+  if (govProgram === 'DOST_JLAP') return GOV_EVALUATORS.DOST_JLAP;
+  if (govProgram === 'GSIS') return GOV_EVALUATORS.GSIS;
+  if (govProgram === 'AFPEBSO') return GOV_EVALUATORS.AFPEBSO;
+  if (govProgram === 'US_VA') return GOV_EVALUATORS.US_VA;
+  return () => [];
+};
+
+export const evaluateScholarship = (profile, scholarship) => {
   const deadlineStatus = getDeadlineStatus(scholarship.deadline);
 
-  if (!scholarship.isActive || deadlineStatus.label === 'Closed') {
-    reasons.push('Inactive or past deadline');
+  if (scholarship.isMatchable === false) {
+    return {
+      eligible: false,
+      reasons: ['Not a student-facing application \u2014 this is a donor/giving program.'],
+      infoNotes: [],
+      fitScore: null,
+      deadlineStatus,
+    };
   }
 
-  if (qpi < Number(scholarship.minimumQpi)) {
-    reasons.push(`Needs QPI ${scholarship.minimumQpi}+`);
+  const reasons = [];
+  if (!scholarship.isActive || deadlineStatus.label === 'Closed') reasons.push('Inactive or past deadline.');
+  reasons.push(...checkUniversalGate(profile).reasons);
+
+  const isAdduAdministered = ['general-pool', 'honors', 'work-study'].includes(scholarship.ruleFamily);
+  if (isAdduAdministered) reasons.push(...checkAdduInternalGate(profile).reasons);
+
+  let branchOutput = [];
+  switch (scholarship.ruleFamily) {
+    case 'general-pool': branchOutput = evaluateGeneralPool(profile, scholarship); break;
+    case 'honors': branchOutput = evaluateHonorsTrack(profile); break;
+    case 'work-study': branchOutput = evaluateWorkStudy(profile, scholarship); break;
+    case 'government-linked': branchOutput = resolveGovEvaluator(scholarship.govProgram)(profile); break;
+    default: branchOutput = ['Unrecognized rule family.'];
   }
 
-  if (income > Number(scholarship.maximumIncome)) {
-    reasons.push(`Income must be at or below ₱${Number(scholarship.maximumIncome).toLocaleString()}`);
-  }
-
-  const eligibleDegrees = scholarship.eligibleDegrees || [DEGREE_FALLBACK];
-  const degreeAllowed = eligibleDegrees.includes(DEGREE_FALLBACK) || eligibleDegrees.includes(degree);
-  if (!degreeAllowed) {
-    reasons.push('Degree program not covered');
-  }
-
-  if (activeGovGrant && scholarship.allowsMultipleGrants === false) {
-    reasons.push('Blocked by exclusion hierarchy');
-  }
+  const infoNotes = branchOutput.filter((e) => e.startsWith('__INFO__')).map((e) => e.replace('__INFO__', ''));
+  reasons.push(...branchOutput.filter((e) => !e.startsWith('__INFO__')));
 
   const eligible = reasons.length === 0;
   return {
     eligible,
     reasons,
+    infoNotes,
     fitScore: eligible ? getScholarshipFit(profile, scholarship) : null,
     deadlineStatus,
   };
@@ -67,21 +161,9 @@ export const evaluateScholarship = (profile, scholarship) => {
 export const searchScholarships = (scholarships, query, filters = {}) => {
   const normalizedQuery = query.trim().toLowerCase();
   const activeToday = new Date();
-
   return scholarships.filter((scholarship) => {
     const deadlineStatus = getDeadlineStatus(scholarship.deadline, activeToday);
-    const haystack = [
-      scholarship.title,
-      scholarship.category,
-      scholarship.origin,
-      scholarship.description,
-      scholarship.coverage,
-      scholarship.departmentScope,
-      scholarship.tags.join(' '),
-    ]
-      .join(' ')
-      .toLowerCase();
-
+    const haystack = [scholarship.title, scholarship.category, scholarship.origin, scholarship.description, scholarship.coverage, scholarship.departmentScope, (scholarship.tags || []).join(' ')].join(' ').toLowerCase();
     const matchesQuery = !normalizedQuery || haystack.includes(normalizedQuery);
     const matchesCategory = !filters.category || filters.category === 'all' || scholarship.category === filters.category;
     const matchesCoverage = !filters.coverage || filters.coverage === 'all' || scholarship.coverageType === filters.coverage;
@@ -90,44 +172,36 @@ export const searchScholarships = (scholarships, query, filters = {}) => {
       || (filters.deadline === 'urgent' && deadlineStatus.tone === 'warning')
       || (filters.deadline === 'closed' && deadlineStatus.tone === 'danger');
     const matchesActive = filters.activeOnly ? scholarship.isActive && deadlineStatus.tone !== 'danger' : true;
-
     return matchesQuery && matchesCategory && matchesCoverage && matchesDeadline && matchesActive;
   });
 };
 
+const sortableDeadlineTime = (deadline) => {
+  if (!deadline) return Infinity;
+  const time = new Date(deadline).getTime();
+  return Number.isNaN(time) ? Infinity : time;
+};
+
 export const rankScholarships = (profile, scholarships) => {
   return scholarships
-    .map((scholarship) => {
-      const evaluation = evaluateScholarship(profile, scholarship);
-      return {
-        ...scholarship,
-        ...evaluation,
-      };
-    })
+    .map((scholarship) => ({ ...scholarship, ...evaluateScholarship(profile, scholarship) }))
     .filter((grant) => grant.eligible)
     .sort((a, b) => {
-      const aDeadline = new Date(a.deadline).getTime();
-      const bDeadline = new Date(b.deadline).getTime();
-      if (aDeadline !== bDeadline) return aDeadline - bDeadline;
+      const aD = sortableDeadlineTime(a.deadline);
+      const bD = sortableDeadlineTime(b.deadline);
+      if (aD !== bD) return aD - bD;
       return (b.fitScore ?? 0) - (a.fitScore ?? 0);
     });
 };
 
 export const getApplicationProgress = (status) => {
   switch (status) {
-    case 'Draft':
-      return 15;
-    case 'Submitted':
-      return 35;
-    case 'Under Review':
-      return 60;
-    case 'For Verification':
-      return 75;
-    case 'Approved':
-      return 100;
-    case 'Rejected':
-      return 100;
-    default:
-      return 0;
+    case 'Draft': return 15;
+    case 'Submitted': return 35;
+    case 'Under Review': return 60;
+    case 'For Verification': return 75;
+    case 'Approved': return 100;
+    case 'Rejected': return 100;
+    default: return 0;
   }
 };
