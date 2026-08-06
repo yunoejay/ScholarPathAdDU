@@ -9,4 +9,3 @@ A React + Vite and Supabase webapp for our ScholarPath AdDU capstone.
 - Reusable document vault
 - OSA admin console
 - Department chair review view
-- Polished local demo data for frontend review
