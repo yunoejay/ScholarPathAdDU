@@ -45,6 +45,22 @@ textarea {
   outline: none;
 }
 
+/* Text controls fill their form column; native controls must keep intrinsic sizing. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  min-width: 0;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  min-width: 1rem;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+}
+
 input[type="number"] {
   background: color-mix(in srgb, var(--surface) 85%, var(--muted-surface) 15%);
 }
@@ -85,7 +101,8 @@ textarea:focus {
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .login-overlay {
@@ -279,11 +296,40 @@ textarea:focus {
   border-radius: var(--radius-app, 24px);
 }
 
+.login-screen > section.create-account-section > .create-account-header {
+  background: transparent;
+  border-radius: 0;
+}
+
+.theme-light .login-screen > section.create-account-section > .create-account-header {
+  background: transparent;
+}
+
+.login-screen > section.create-account-section > .create-account-header .create-account-back {
+  background: transparent;
+  border-radius: 0;
+}
+
 .login-screen input,
 .login-screen button,
 .login-screen .role-picker-menu,
 .login-screen .select-picker-menu {
   border-radius: var(--radius-control, 14px);
+}
+
+.login-screen input[type='password'],
+.login-screen input[type='text'] {
+  min-width: 0;
+}
+
+.login-remember-label {
+  max-width: 100%;
+  line-height: 1.35;
+}
+
+.login-remember-checkbox {
+  appearance: auto;
+  accent-color: var(--primary);
 }
 
 .feedback-banner {
@@ -352,6 +398,31 @@ textarea:focus {
   .login-screen > section {
     margin-top: 2.5rem;
     padding: 1rem;
+  }
+
+  .login-screen > section > form {
+    min-width: 0;
+  }
+
+  .login-screen .login-remember-row,
+  .login-screen form > .flex.flex-wrap.items-center.justify-between {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .login-screen .login-remember-row > *,
+  .login-screen form > .flex.flex-wrap.items-center.justify-between > * {
+    min-width: 0;
+  }
+
+  .login-screen .forgot-link,
+  .login-screen form > .flex.flex-wrap.items-center.justify-between button {
+    white-space: normal;
+    text-align: right;
+  }
+
+  .login-screen h1 {
+    overflow-wrap: anywhere;
   }
 
   .modal-overlay {
@@ -429,6 +500,93 @@ textarea:focus {
 
 .full-width {
   width: 100%;
+}
+
+.segmented-auth-actions {
+  position: relative;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.segmented-auth-actions::after {
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  left: 50%;
+  width: 1px;
+  content: '';
+  background: var(--card-border);
+  transform: rotate(-24deg);
+  transform-origin: center;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.segmented-auth-action {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: flex-basis 220ms ease, flex-grow 220ms ease, opacity 160ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.segmented-auth-action:hover,
+.segmented-auth-action:focus-visible {
+  flex: 1 1 100%;
+  opacity: 1;
+  z-index: 1;
+}
+
+.segmented-auth-actions:has(.segmented-auth-action--google:hover) .segmented-auth-action--create,
+.segmented-auth-actions:has(.segmented-auth-action--google:focus-visible) .segmented-auth-action--create,
+.segmented-auth-actions:has(.segmented-auth-action--create:hover) .segmented-auth-action--google,
+.segmented-auth-actions:has(.segmented-auth-action--create:focus-visible) .segmented-auth-action--google {
+  flex: 0 0 0;
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented-auth-actions:has(.segmented-auth-action:hover)::after,
+.segmented-auth-actions:has(.segmented-auth-action:focus-visible)::after {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .segmented-auth-action {
+    flex: 1 1 0%;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .segmented-auth-action:hover,
+  .segmented-auth-action:focus-visible {
+    flex-grow: 1;
+  }
+
+  .segmented-auth-actions:has(.segmented-auth-action:hover) .segmented-auth-action,
+  .segmented-auth-actions:has(.segmented-auth-action:focus-visible) .segmented-auth-action {
+    flex: 1 1 0%;
+    width: auto;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .segmented-auth-actions:has(.segmented-auth-action:hover)::after,
+  .segmented-auth-actions:has(.segmented-auth-action:focus-visible)::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-auth-action,
+  .segmented-auth-actions::after {
+    transition: none;
+  }
 }
 .application-detail-modal { width: min(620px, 100%); max-height: min(80vh, 680px); overflow: auto; padding: 1.5rem; }
 .application-detail-modal h2 { margin: 0; }

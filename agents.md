@@ -146,6 +146,7 @@ Match the existing design direction unless a task explicitly calls for redesign:
 - Keep notification menus keyboard- and mobile-friendly: support outside-click/Escape dismissal, readable unread counts, and adequate touch targets.
 - Keep the mobile page-navigation drawer minimal: it should use a solid theme-aware background and show only the page links, without extra branding or a duplicate drawer heading.
 - The light/dark theme toggle is available on both the authenticated shell and login screen and must remain persisted across reloads.
+- The login action control combines Google sign in and Create account into one responsive control: it is split 50/50 at rest, uses a CSS-drawn diagonal slash divider, and expands the hovered desktop action to the full control while hiding the inactive action. On mobile widths, keep both actions visible and 50/50 because touch devices do not use cursor hover.
 
 
 ## Data And State Conventions
