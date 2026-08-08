@@ -85,9 +85,18 @@ export default function AcademicProfileModal({ fullName, initialProgram, initial
             </div>
           )}
           {(validationError || errorMessage) && <div className="w-full rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-3 text-sm text-rose-200" role="alert">{validationError || errorMessage}</div>}
-          <Button variant="primary" className="w-full" type="submit" disabled={!program || !studentNumber || householdIncome === '' || qpi === '' || isSaving}>
-            {isSaving ? 'Saving profile…' : 'Continue to ScholarPath'}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Button variant="primary" className="flex-1" type="submit" disabled={!program || !studentNumber || householdIncome === '' || qpi === '' || isSaving}>
+              {isSaving ? 'Saving profile…' : 'Continue to ScholarPath'}
+            </Button>
+            <button
+              type="button"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-muted transition hover:-translate-y-px hover:text-app-text focus:outline-none focus:ring-4 focus:ring-blue-500/20"
+              onClick={() => onSave(null, null, null, null, null)}
+            >
+              Skip for now
+            </button>
+          </div>
         </form>
     </ModalShell>
   );

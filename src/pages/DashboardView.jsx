@@ -3,7 +3,7 @@ import { GraduationCap } from 'lucide-react';
 import { fmtCurrency, fmtDate } from '../lib/formatters';
 import logoImage from '../../pictures/logo.png';
 
-export default function DashboardView({ profile, stats, applications, eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onTrackScholarship, onMarkRead, onShowApplications }) {
+export default function DashboardView({ profile, isFirstLogin, stats, applications, eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onTrackScholarship, onMarkRead, onShowApplications, hasIncompleteProfile, onCompleteProfile }) {
   // Student Dashboard
   if (profile.role === 'student') {
     const heroHighlights = [
@@ -25,16 +25,11 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
     ];
 
     return (
-      <div className="grid gap-4">
-        <section className="welcome-banner rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-          <p className="welcome-message">Welcome back, {profile.fullName || 'Scholar'}! <GraduationCap size={18} aria-hidden="true" /></p>
-        </section>
-        <section className="grid gap-6 rounded-app border bg-app-card p-5 shadow-app backdrop-blur lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-          <div>
-            <h1>Find eligible scholarships, reuse documents, and track every deadline in one place.</h1>
-            <p>
-              The manuscript-driven application connects QPI, household income, and degree program rules to a polished, local-first scholarship experience.
-            </p>
+      <div className="blue-action-view grid gap-4">
+        <section className="dashboard-hero grid gap-6 rounded-app border bg-app-card p-5 shadow-app backdrop-blur lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] lg:p-7">
+          <div className="dashboard-hero-copy">
+            <p className="dashboard-welcome">{isFirstLogin ? 'Welcome!' : `Welcome back, ${profile.fullName || 'Scholar'}!`}</p>
+            <h1>Find the right scholarship and take the next step.</h1>
             <div className="flex flex-wrap items-center gap-3">
               <button className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={onOpenExplorer}>Explore scholarships</button>
               <button className="inline-flex min-h-10 items-center justify-center rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={onOpenEligibility}>Run eligibility check</button>
@@ -49,23 +44,30 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
               ))}
             </div>
           </div>
-          <div className="grid content-start gap-3">
-            <div className="rounded-[18px] border border-app-border bg-app-surface p-4">
+          <div className="dashboard-hero-summary grid content-start gap-3">
+            <div className="dashboard-summary-card rounded-[18px] border border-app-border bg-app-surface p-4">
               <span>Student profile</span>
               <strong>{profile.degreeProgram}</strong>
               <p>QPI {profile.qpi ?? '—'} · Income {profile.householdIncome ? fmtCurrency(profile.householdIncome) : '—'}</p>
             </div>
-            <div className="rounded-[18px] border border-app-border bg-app-surface p-4">
+            <div className="dashboard-summary-card rounded-[18px] border border-app-border bg-app-surface p-4">
               <span>Best match</span>
               <strong>{eligibleScholarships[0]?.title ?? 'No matches yet'}</strong>
               <p>{eligibleScholarships[0] ? `Deadline ${fmtDate(eligibleScholarships[0].deadline)}` : 'Adjust your profile inputs.'}</p>
             </div>
-            <div className="rounded-[18px] border border-blue-400/30 bg-blue-500/10 p-4">
-              <span>Flow preview</span>
-              <p>Search, check eligibility, upload once, and track all updates from one dashboard.</p>
-            </div>
           </div>
         </section>
+
+        {hasIncompleteProfile && (
+          <section className="profile-reminder flex flex-col gap-4 rounded-app border border-amber-300/40 bg-gradient-to-r from-amber-400/15 via-orange-400/10 to-blue-500/10 p-5 shadow-app sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="eyebrow text-amber-700 dark:text-amber-200">Profile reminder</span>
+              <h2 className="mt-1 text-xl font-bold text-app-text">Complete your academic profile</h2>
+              <p className="mb-0 mt-1 max-w-2xl text-sm text-app-muted">Add your program, student number, household income, and QPI to improve Smart Eligibility Checker matches.</p>
+            </div>
+            <button type="button" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-amber-500/25" onClick={onCompleteProfile}>Complete profile</button>
+          </section>
+        )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Programs in catalog" value={stats.totalPrograms} note="Active scholarship opportunities" />
@@ -75,7 +77,7 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
         </section>
 
         <section className="grid gap-4 xl:grid-cols-2">
-          <Card title="Top matches" action={<button className="link-btn" onClick={onShowApplications}>View applications</button>}>
+          <Card title="Top matches" action={<button className="link-btn" type="button" onClick={onShowApplications}>Open application workspace</button>}>
             <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
               {eligibleScholarships.length ? eligibleScholarships.map((scholarship) => (
                 <ScholarshipRow key={scholarship.id} scholarship={scholarship} onApply={onTrackScholarship} />
@@ -108,18 +110,17 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
 
         <section className="grid gap-6 rounded-app border bg-app-card p-5 shadow-app backdrop-blur lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <div>
-            <h1>Manage Applications & Document Verification</h1>
-            <p>Review student submissions, verify documents, and manage the scholarship application workflow.</p>
+            <h1>Review applications and documents</h1>
           </div>
           <div className="grid content-start gap-3">
             <div className="rounded-[18px] border border-app-border bg-app-surface p-4">
               <span>Role</span>
               <strong>OSA Administrator</strong>
-              <p>Document verification, application management, announcements</p>
+              <p>Applications, document verification, and announcements</p>
             </div>
             <div className="rounded-[18px] border border-blue-400/30 bg-blue-500/10 p-4">
               <span>Functions</span>
-              <p>Visit the OSA Console to review applications, verify documents, and broadcast announcements.</p>
+              <p>Use the OSA Console to review applications, verify documents, and share important announcements.</p>
             </div>
           </div>
         </section>
@@ -152,18 +153,17 @@ export default function DashboardView({ profile, stats, applications, eligibleSc
 
         <section className="grid gap-6 rounded-app border bg-app-card p-5 shadow-app backdrop-blur lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <div>
-            <h1>Review Grant-in-Aid Endorsements</h1>
-            <p>Screen student applications within your department and submit official GIA endorsements to the OSA.</p>
+            <h1>Review Grant-in-Aid applicants</h1>
           </div>
           <div className="grid content-start gap-3">
             <div className="rounded-[18px] border border-app-border bg-app-surface p-4">
               <span>Department</span>
               <strong>{profile.department}</strong>
-              <p>Your role: Endorsement and GIA screening</p>
+              <p>GIA screening and endorsement decisions</p>
             </div>
             <div className="rounded-[18px] border border-blue-400/30 bg-blue-500/10 p-4">
               <span>Scope</span>
-              <p>Review students in {profile.department} and assess their economic and academic eligibility for GIA.</p>
+              <p>Review students in {profile.department} and assess their economic and academic eligibility for GIA support.</p>
             </div>
           </div>
         </section>

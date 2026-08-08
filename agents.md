@@ -223,3 +223,12 @@ The most likely high-value work in this repo is feature polishing, manuscript-al
 
 
 Before any first substantive edit, identify the exact file and behavior being changed, confirm how it relates to the manuscript, and make the smallest edit that preserves the app's demo-first workflow.
+
+## Recent UI Implementation Notes
+
+- Use the shared `page-title-bar` and `page-section-label` pattern for authenticated page headers. Keep one clear title surface per page; avoid stacking a separate welcome card and a second introductory hero unless the content hierarchy clearly requires it.
+- Dashboard student entry content should keep the welcome message, primary actions, and profile/match summaries within one balanced hero section. The layout must remain responsive and avoid large unused areas.
+- Use the `page-metric` pattern for comparable summary boxes, including Applications, Document Vault, Scholarship Explorer, and Smart Eligibility Checker metrics. Center the Eligible grants metric when it is displayed as a standalone count.
+- Primary page actions such as `View Applications`, `Explore scholarships`, and `Save as my profile` should use the shared Ateneo blue gradient treatment; secondary actions should use the app surface treatment.
+- Scholarship Explorer reset actions must clear the search query and reset category, coverage, deadline, and Active only state together.
+- Keep explanatory copy inside the relevant forms, filters, workflow cards, or settings groups rather than placing long descriptions in every page header.

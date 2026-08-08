@@ -135,18 +135,15 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
   }, [editableProfile, scholarships]);
 
   return (
-    <div className="grid gap-4">
-      <section className="flex flex-col items-start justify-between gap-4 md:flex-row rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-        <div>
-          <span className="eyebrow">Smart Eligibility Checker</span>
+    <div className="blue-action-view grid gap-4">
+      <section className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row">
+        <div className="page-title-copy">
+          <span className="page-section-label">Smart Eligibility Checker</span>
           <h2>Check QPI, income, and degree eligibility</h2>
-          <p>Rules follow the forward-chaining approach described in the manuscript, including exclusion overrides. The backend will be wired in later.</p>
         </div>
-        <div className="grid w-full gap-3 sm:w-auto">
-          <div>
-            <strong>{result.length}</strong>
-            <span>Eligible grants</span>
-          </div>
+        <div className="page-metric eligible-grants-metric rounded-2xl border border-app-border bg-app-surface p-4 text-center sm:min-w-36">
+          <strong>{result.length}</strong>
+          <span>Eligible grants</span>
         </div>
       </section>
 

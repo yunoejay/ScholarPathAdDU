@@ -33,6 +33,133 @@ button {
   cursor: pointer;
 }
 
+/* Keep legacy page-specific action buttons visually consistent with the
+   shared Button component. This targets buttons only, not form controls or
+   panels that intentionally use the same surface tokens. */
+button.bg-app-surface,
+button.bg-app-card {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--card-border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 22%, transparent), color-mix(in srgb, var(--primary) 10%, transparent));
+  box-shadow: var(--shadow-card);
+}
+
+button.bg-app-surface:hover,
+button.bg-app-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--card-border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 34%, transparent), color-mix(in srgb, var(--primary) 18%, transparent));
+}
+
+/* Keep actions distinct in dark mode: quiet surface controls should not look
+   like primary submit buttons, and picker internals must stay untouched. */
+.blue-action-view button:not(.select-picker-option):not(.fixed) {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--card-border)) !important;
+  background: color-mix(in srgb, var(--surface) 78%, #020817 22%) !important;
+  color: var(--text) !important;
+  box-shadow: 0 6px 16px rgba(0, 8, 25, 0.18);
+}
+
+.blue-action-view button[class*="bg-gradient"]:not(.select-picker-option) {
+  border-color: #24539b !important;
+  background: linear-gradient(135deg, #174486 0%, #205aa6 52%, #2b70c4 100%) !important;
+  color: #ffffff !important;
+}
+
+.blue-action-view button:hover,
+.blue-action-view button:focus-visible {
+  border-color: color-mix(in srgb, var(--primary) 62%, var(--card-border)) !important;
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface)) !important;
+}
+
+.blue-action-view button[class*="bg-gradient"]:hover,
+.blue-action-view button[class*="bg-gradient"]:focus-visible {
+  border-color: #78a9e5 !important;
+  background: linear-gradient(135deg, #205aa6 0%, #2b70c4 56%, #3982d8 100%) !important;
+  color: #ffffff !important;
+}
+
+.blue-action-view button:disabled {
+  background: #6683bd !important;
+  border-color: #6683bd !important;
+  color: #eaf1ff !important;
+}
+
+/* The Document Vault type picker (Income Proof, Transcript, etc.) keeps its
+   compact control height. Its full-screen dismiss layer must stay invisible. */
+.blue-action-view .vault-upload-form > .relative > button:not(.select-picker-option) {
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.blue-action-view .select-picker-option {
+  min-height: 0;
+  padding: 0.75rem 0.8rem;
+  border: 0 !important;
+  border-radius: 0.75rem;
+  background: transparent !important;
+  color: var(--text) !important;
+  box-shadow: none;
+}
+
+.blue-action-view .select-picker-option:hover,
+.blue-action-view .select-picker-option:focus-visible,
+.blue-action-view .select-picker-option.is-selected,
+.blue-action-view .select-picker-option.is-active {
+  background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+  color: var(--text) !important;
+}
+
+.blue-action-view button.fixed {
+  border-color: transparent !important;
+  background: rgba(15, 23, 42, 0.1) !important;
+  color: transparent !important;
+  box-shadow: none;
+}
+
+.blue-action-view .link-btn {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.blue-action-view .vault-upload-button {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Light mode can carry the brighter Ateneo blue; dark mode keeps controls
+   lower-contrast so they do not glow against the navy application surface. */
+.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed) {
+  border-color: #174fc4 !important;
+  background: color-mix(in srgb, var(--surface) 84%, white 16%) !important;
+  color: var(--text) !important;
+  box-shadow: 0 6px 16px rgba(23, 70, 130, 0.12);
+}
+
+.theme-light .blue-action-view button[class*="bg-gradient"]:not(.select-picker-option) {
+  background: linear-gradient(135deg, #002776 0%, #0033a0 52%, #0a4bd1 100%) !important;
+  color: #ffffff !important;
+}
+
+.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):hover,
+.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):focus-visible {
+  border-color: #4d8dff !important;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface)) !important;
+}
+
+.theme-light .blue-action-view button[class*="bg-gradient"]:hover,
+.theme-light .blue-action-view button[class*="bg-gradient"]:focus-visible {
+  background: linear-gradient(135deg, #0033a0 0%, #0a4bd1 56%, #2563eb 100%) !important;
+  color: #ffffff !important;
+}
+
 input,
 select,
 textarea {
@@ -91,6 +218,214 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
 
+/* Shared overflow protection: long scholarship names, filenames, roles, and
+   statuses must yield to their sibling controls instead of colliding with them. */
+h1, h2, h3, h4, p, strong, span, button, a, label {
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4 {
+  line-height: 1.2;
+}
+
+p {
+  line-height: 1.55;
+}
+
+button, a, select {
+  max-width: 100%;
+}
+
+select {
+  min-height: 3rem;
+  text-overflow: ellipsis;
+}
+
+.card-header > * {
+  min-width: 0;
+}
+
+.card-header-action {
+  max-width: 100%;
+}
+
+.card-header-action button,
+.card-header-action a {
+  white-space: normal;
+}
+
+.notification-dropdown {
+  max-width: calc(100vw - 1.5rem);
+}
+
+.notification-dropdown h3,
+.notification-dropdown p {
+  overflow-wrap: anywhere;
+}
+
+/* Summary metadata is intentionally stacked. Keeping the label and value as
+   inline elements makes long degree and scholarship names run together. */
+.dashboard-summary-card > span,
+.dashboard-summary-card > strong {
+  display: block;
+}
+
+.dashboard-summary-card > strong {
+  margin-top: 0.3rem;
+}
+
+.dashboard-summary-card > p {
+  margin-bottom: 0;
+  margin-top: 0.35rem;
+}
+
+.page-metric > span,
+.page-metric > strong {
+  display: block;
+}
+
+.page-metric > strong {
+  margin-top: 0.3rem;
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.page-metric > p {
+  margin-bottom: 0;
+  margin-top: 0.45rem;
+}
+
+/* Shared page title bars use one quiet hierarchy: a small section label,
+   one title, and optional actions or metrics aligned on the same surface. */
+.page-title-bar {
+  overflow: hidden;
+}
+
+.page-title-copy {
+  min-width: 0;
+  max-width: 46rem;
+}
+
+.page-title-copy h1,
+.page-title-copy h2,
+.page-title-bar > h1,
+.page-title-bar > h2 {
+  margin-top: 0.45rem;
+  margin-bottom: 0;
+}
+
+.page-section-label {
+  display: block;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dashboard-hero-copy {
+  min-width: 0;
+}
+
+.dashboard-welcome {
+  margin: 0 0 0.7rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.dashboard-hero-copy h1 {
+  max-width: 38rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0;
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.dashboard-hero-copy > p {
+  max-width: 38rem;
+  margin-top: 0.75rem;
+}
+
+.dashboard-hero-summary {
+  align-self: start;
+}
+
+.dashboard-hero-summary .dashboard-summary-card {
+  min-height: 7.5rem;
+}
+
+@media (max-width: 767px) {
+  .page-title-bar {
+    align-items: stretch;
+  }
+
+  .page-title-bar > button {
+    width: 100%;
+  }
+}
+
+/* Grid children need an explicit minimum width of zero before their text can
+   wrap inside the available column. */
+main section,
+main article,
+main form,
+main label {
+  min-width: 0;
+}
+
+main h1,
+main h2,
+main h3,
+main h4,
+main p,
+main strong,
+main span {
+  max-width: 100%;
+}
+
+/* Reusable list/card headers: the title column must give space to a status
+   badge or action instead of pushing it into the text. */
+main article > .flex > div:first-child,
+main .deadline-item > div:first-child,
+main .upcoming-deadlines-header > h3 {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+main article > .flex > :last-child,
+main .deadline-item > .days-left,
+main .deadline-item > .deadline-actions {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    align-items: center;
+  }
+
+  .app-header .notification-dropdown {
+    position: fixed;
+    top: 4.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+
+  .card-header {
+    align-items: stretch;
+  }
+
+  .card-header-action {
+    width: 100%;
+  }
+
+  .card-header-action button,
+  .card-header-action a {
+    width: 100%;
+  }
+}
+
 .login-screen {
   min-height: 100vh;
   display: grid;
@@ -137,10 +472,11 @@ textarea:focus {
 .select-picker-menu {
   position: absolute;
   left: 0;
-  width: min(100%, 21rem);
+  width: max(100%, 15rem);
+  max-width: min(22rem, calc(100vw - 1.5rem));
   top: calc(100% + 0.45rem);
   max-height: min(60vh, 26rem);
-  z-index: 20;
+  z-index: 60;
   display: grid;
   gap: 0.45rem;
   padding: 0.6rem;
@@ -164,6 +500,7 @@ textarea:focus {
   background: transparent;
   color: var(--text);
   text-align: left;
+  min-width: 0;
   border-radius: 12px;
   padding: 0.75rem 0.8rem;
   transition: background 0.14s ease, transform 0.14s ease;
@@ -598,6 +935,79 @@ textarea:focus {
   gap: 0.9rem;
 }
 
+.explorer-filters {
+  position: relative;
+  z-index: 10;
+}
+
+.explorer-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.explorer-search-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+}
+
+.explorer-filter-summary {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 10rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.explorer-filter-summary strong {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.explorer-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.85rem;
+}
+
+.explorer-filter-grid > label:not(.explorer-search-field),
+.explorer-reset-button {
+  min-width: 0;
+}
+
+.explorer-reset-button {
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 0.75rem;
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.explorer-reset-button:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+.scholarship-card-title {
+  margin-top: 0.65rem;
+  line-height: 1.25;
+}
+
+.scholarship-card-coverage {
+  min-height: 3.2rem;
+  margin: 0;
+}
+
 .calendar-cell:focus-visible,
 button:focus-visible,
 a:focus-visible {
@@ -623,6 +1033,20 @@ a:focus-visible {
 }
 
 @media (max-width: 720px) {
+
+  .explorer-search-row,
+  .explorer-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .explorer-filter-summary {
+    min-width: 0;
+  }
+
+  .select-picker-menu {
+    width: 100%;
+    max-width: 100%;
+  }
 
   .theme-toggle-icon {
     width: 1.85rem;
@@ -956,6 +1380,10 @@ a:focus-visible {
   border-radius: 12px;
   background: var(--surface-2);
   border-left: 4px solid var(--primary);
+}
+
+.deadline-item > div:first-child {
+  min-width: 0;
 }
 
 .deadline-item.urgent {

@@ -20,7 +20,6 @@ export default function AdminConsole({ applications, documents, announcements, n
         <div>
           <span className="text-xs font-bold uppercase tracking-[0.14em] text-ateneo-bright">OSA console</span>
           <h3 className="mt-1">Review applications, verify documents, and publish announcements.</h3>
-          <p className="mt-1 text-sm text-app-muted">This view is preloaded with queue items so it stays visible even before backend integration.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {['Applications', 'Documents', 'Announcements', 'Notifications'].map((label) => <StatusBadge key={label}>{label}</StatusBadge>)}
@@ -32,8 +31,8 @@ export default function AdminConsole({ applications, documents, announcements, n
           <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {reviewApplications.length ? reviewApplications.map((entry) => (
               <article key={entry.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+                <div className="flex min-w-0 items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
                     <h3>{entry.scholarshipTitle}</h3>
                     <p>{entry.status} · Updated {fmtDate(entry.updatedAt)}</p>
                   </div>
@@ -53,8 +52,8 @@ export default function AdminConsole({ applications, documents, announcements, n
           <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {pendingDocuments.length ? pendingDocuments.map((doc) => (
               <article key={doc.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+                <div className="flex min-w-0 items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
                     <h3>{doc.title}</h3>
                     <p>{doc.fileName} · {doc.documentType}</p>
                   </div>

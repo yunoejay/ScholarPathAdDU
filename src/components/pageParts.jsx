@@ -8,7 +8,8 @@ export { Button, Card, EmptyState, StatusBadge } from './ui';
 
 export function StatCard({ label, value, note }) {
   return (
-    <article className="flex flex-col gap-1 rounded-app border border-app-border bg-app-card p-5 shadow-app backdrop-blur">
+    <article className="group relative flex flex-col gap-1 overflow-hidden rounded-app border border-app-border bg-app-card p-5 shadow-card backdrop-blur transition hover:-translate-y-1 hover:shadow-app">
+      <span className="absolute right-0 top-0 h-20 w-20 translate-x-5 -translate-y-5 rounded-full bg-blue-500/10 transition group-hover:scale-125" />
       <span className="text-sm font-semibold text-app-muted">{label}</span>
       <strong className="text-3xl font-bold text-app-text">{value}</strong>
       <p className="mb-0 text-sm text-app-muted">{note}</p>
@@ -19,12 +20,12 @@ export function StatCard({ label, value, note }) {
 export function ScholarshipRow({ scholarship, onApply, compact = false }) {
   return (
     <article className={`rounded-app border border-app-border bg-app-card p-5 shadow-app backdrop-blur ${compact ? 'py-4' : ''}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h3 className="m-0 text-base font-semibold text-app-text">{scholarship.title}</h3>
           <p className="mt-1 text-sm text-app-muted">{scholarship.category} · {fmtDate(scholarship.deadline)}</p>
         </div>
-        <StatusBadge>{scholarship.fitScore ?? 'Match'}</StatusBadge>
+        <StatusBadge className="max-w-full shrink-0">{scholarship.fitScore ?? 'Match'}</StatusBadge>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-app-muted mt-4">
         <span><strong>QPI</strong> {scholarship.minimumQpi}+ </span>
@@ -51,12 +52,12 @@ export function NotificationItem({ entry, onMarkRead }) {
         }
       }}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h3 className="m-0 text-base font-semibold text-app-text">{entry.title}</h3>
           <p className="mt-1 text-sm text-app-muted">{entry.channel} · {fmtDate(entry.createdAt)}</p>
         </div>
-        <StatusBadge>{entry.status}</StatusBadge>
+        <StatusBadge className="max-w-full shrink-0">{entry.status}</StatusBadge>
       </div>
       <p className="mt-3 text-sm text-app-muted">{entry.body}</p>
     </article>
@@ -66,12 +67,12 @@ export function NotificationItem({ entry, onMarkRead }) {
 export function AnnouncementItem({ entry }) {
   return (
     <article className="rounded-app border border-app-border bg-app-card p-5 shadow-app backdrop-blur">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h3 className="m-0 text-base font-semibold text-app-text">{entry.title}</h3>
           <p className="mt-1 text-sm text-app-muted">{entry.audience} · {fmtDate(entry.createdAt)}</p>
         </div>
-        <StatusBadge>Announcement</StatusBadge>
+        <StatusBadge className="max-w-full shrink-0">Announcement</StatusBadge>
       </div>
       <p className="mt-3 text-sm text-app-muted">{entry.body}</p>
     </article>
@@ -104,7 +105,7 @@ export function NotificationDropdown({ notifications, announcements, onMarkRead 
   }, [isOpen]);
 
   return (
-    <div className="relative z-[45]" ref={dropdownRef}>
+    <div className="relative z-[45] min-w-0" ref={dropdownRef}>
       <button
         type="button"
         className={`relative inline-grid h-11 w-11 place-items-center rounded-full border border-app-border bg-app-surface text-app-text shadow-card transition hover:-translate-y-px hover:shadow-app focus:outline-none focus:ring-4 focus:ring-blue-500/20 ${unreadCount ? 'ring-2 ring-rose-400/30' : ''}`}
@@ -118,7 +119,7 @@ export function NotificationDropdown({ notifications, announcements, onMarkRead 
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-[calc(100%+0.7rem)] w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-app-border bg-app-card shadow-2xl animate-[notificationMenuIn_140ms_ease-out] sm:w-96" role="dialog" aria-label="Notifications and announcements">
+        <div className="notification-dropdown absolute right-0 top-[calc(100%+0.7rem)] w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-app-border bg-app-card shadow-2xl animate-[notificationMenuIn_140ms_ease-out] sm:w-96" role="dialog" aria-label="Notifications and announcements">
           <div className="flex items-start justify-between gap-4 border-b border-app-border px-4 py-3">
             <div className="grid gap-1">
               <strong className="text-sm text-app-text">Notifications</strong>

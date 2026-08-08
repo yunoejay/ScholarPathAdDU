@@ -77,6 +77,8 @@ const createInitialState = () => {
     // Return fresh defaults with light theme
     return {
       isAuthenticated: false,
+      hasLoggedInBefore: false,
+      showFirstLoginWelcome: false,
       authUser: null,
       rememberMe: false,
       savedEmail: null,
@@ -111,11 +113,14 @@ const createInitialState = () => {
       notifications: seedNotifications,
       announcements: seedAnnouncements,
       customDeadlines: [],
+      profileSkipped: false,
       theme: 'light',
     };
   }
   const defaults = {
     isAuthenticated: false,
+    hasLoggedInBefore: false,
+    showFirstLoginWelcome: false,
     authUser: null,
     rememberMe: false,
     savedEmail: null,
@@ -150,6 +155,7 @@ const createInitialState = () => {
     notifications: seedNotifications,
     announcements: seedAnnouncements,
     customDeadlines: [],
+    profileSkipped: false,
     theme: 'light',
   };
 
@@ -162,6 +168,8 @@ const createInitialState = () => {
     ...stored,
     theme: stored.theme ?? 'light',
     authUser: stored.authUser ?? defaults.authUser,
+    hasLoggedInBefore: stored.hasLoggedInBefore ?? defaults.hasLoggedInBefore,
+    showFirstLoginWelcome: stored.showFirstLoginWelcome ?? defaults.showFirstLoginWelcome,
     rememberMe: stored.rememberMe ?? defaults.rememberMe,
     savedEmail: stored.savedEmail ?? defaults.savedEmail,
     savedRole: stored.savedRole ?? defaults.savedRole,
@@ -185,6 +193,8 @@ const createInitialState = () => {
     documents: Array.isArray(stored.documents) && stored.documents.length ? stored.documents : defaults.documents,
     notifications: Array.isArray(stored.notifications) && stored.notifications.length ? stored.notifications : defaults.notifications,
     announcements: Array.isArray(stored.announcements) && stored.announcements.length ? stored.announcements : defaults.announcements,
+    customDeadlines: Array.isArray(stored.customDeadlines) ? stored.customDeadlines : defaults.customDeadlines,
+    profileSkipped: stored.profileSkipped ?? defaults.profileSkipped,
   };
 };
 
@@ -320,6 +330,7 @@ function App() {
           : previous.profileDraft,
       }));
       if (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) {
+        if (readStoredState()?.profileSkipped) return;
         setProfileOnboarding({ id: user.id, fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Signed in user', initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || user.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
       }
     };
@@ -418,10 +429,11 @@ function App() {
       const account = resolveAccount(resolvedRole);
       const profileResult = authResult.user?.id ? await getUserProfile(authResult.user.id) : { profile: null };
       const profile = profileResult.profile;
-
       updateState((previous) => ({
         ...previous,
         isAuthenticated: true,
+        hasLoggedInBefore: true,
+        showFirstLoginWelcome: !previous.hasLoggedInBefore,
         viewerRole: account.role,
         activeView: 'dashboard',
         authUser: {
@@ -442,8 +454,7 @@ function App() {
           ? { ...previous.profileDraft, degreeProgram: profile.degree_program }
           : previous.profileDraft,
       }));
-
-      if (authResult.user?.id && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null)) {
+      if (authResult.user?.id && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) && !readStoredState()?.profileSkipped) {
         setProfileOnboarding({ id: authResult.user.id, fullName: profile?.full_name || authResult.user?.user_metadata?.full_name || account.fullName, initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || authResult.user?.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
       }
 
@@ -504,6 +515,7 @@ function App() {
     updateState((previous) => ({
       ...previous,
       isAuthenticated: false,
+      showFirstLoginWelcome: false,
       authUser: null,
       viewerRole: 'student',
       activeView: 'dashboard',
@@ -512,6 +524,13 @@ function App() {
   };
 
   const saveAcademicProfile = async (program, studentNumber, householdIncome, qpi, hasActiveGovernmentGrant) => {
+    if (!program) {
+      updateState({ profileSkipped: true });
+      setProfileOnboarding(null);
+      setProfileSaveError('');
+      return;
+    }
+
     setIsSavingProfile(true);
     setProfileSaveError('');
     const result = await updateUserProfile(profileOnboarding.id, {
@@ -532,6 +551,7 @@ function App() {
     updateState((previous) => ({
       authUser: { ...previous.authUser, department: program.department, degreeProgram: program.value, studentNumber, householdIncome, qpi, hasActiveGovernmentGrant },
       profileDraft: { ...previous.profileDraft, degreeProgram: program.value, householdIncome, qpi, hasActiveGovernmentGrant },
+      profileSkipped: false,
     }));
     setProfileOnboarding(null);
     setIsSavingProfile(false);
@@ -767,6 +787,27 @@ function App() {
 
   const eligiblePreview = eligibleScholarships.slice(0, 6);
   const departmentQueue = departmentReviews.filter((entry) => entry.department === currentProfile.department);
+  const hasIncompleteStudentProfile = state.viewerRole === 'student' && (
+    !currentIdentity.degreeProgram
+    || !currentIdentity.studentNumber
+    || currentIdentity.qpi == null
+    || currentIdentity.qpi === ''
+    || currentIdentity.householdIncome == null
+    || currentIdentity.householdIncome === ''
+  );
+
+  const openAcademicProfile = () => {
+    setProfileSaveError('');
+    setProfileOnboarding({
+      id: state.authUser?.id || currentIdentity.id,
+      fullName: currentIdentity.fullName,
+      initialProgram: currentIdentity.degreeProgram || '',
+      initialStudentNumber: currentIdentity.studentNumber || '',
+      initialQpi: currentIdentity.qpi ?? '',
+      initialHouseholdIncome: currentIdentity.householdIncome ?? '',
+      initialHasActiveGovernmentGrant: currentIdentity.hasActiveGovernmentGrant ?? false,
+    });
+  };
 
   const navigationItems = [
     { view: 'dashboard', label: 'Dashboard', visible: true },
@@ -802,7 +843,7 @@ function App() {
         <div className="w-full max-w-3xl rounded-app border border-app-border bg-app-card p-6 shadow-app backdrop-blur sm:p-8">
           <span className="inline-flex items-center rounded-full border border-app-border bg-app-surface px-3 py-1 text-xs font-semibold text-app-text">ScholarPath AdDU</span>
           <h1 className="mt-4 text-2xl font-bold">Preparing your scholarship workspace</h1>
-          <p className="mt-2 text-app-muted">Loading a polished front-end review of the manuscript-driven experience.</p>
+          <p className="mt-2 text-app-muted">Preparing your scholarship workspace…</p>
           <div className="mt-6 grid gap-3">
             <div className="h-[92px] animate-pulse rounded-[18px] bg-app-surface" />
             <div className="h-[92px] animate-pulse rounded-[18px] bg-app-surface" />
@@ -843,20 +884,20 @@ function App() {
           errorMessage={profileSaveError}
         />
       )}
-      <header className="mb-5 flex items-start justify-between gap-3 sm:gap-4">
-        <div className="min-w-0">
+      <header className="app-header mb-5 flex min-w-0 items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
           <div className="inline-flex max-w-full items-center gap-2">
             <img src={logoImage} alt="Ateneo de Davao University logo" className="h-11 w-11 shrink-0 rounded-full border border-white/20 bg-white/10 object-contain p-0.5 sm:h-14 sm:w-14" />
             <div className="truncate text-lg font-extrabold tracking-wide sm:text-xl">ScholarPath AdDU</div>
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
           {state.authUser && (
             <div className="mr-1 inline-flex min-w-0 items-center gap-2" title={`${state.authUser.fullName} · ${roleLabels[state.viewerRole]}`}>
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-ateneo to-sky-400 text-xs font-extrabold text-white" aria-hidden="true">{getInitials(state.authUser.fullName)}</span>
-              <span className="hidden min-w-0 leading-tight sm:grid">
-                <strong>{state.authUser.fullName}</strong>
+              <span className="hidden min-w-0 max-w-[12rem] leading-tight sm:grid">
+                <strong className="truncate">{state.authUser.fullName}</strong>
                 <span className="text-xs text-app-muted">{roleLabels[state.viewerRole]}</span>
               </span>
             </div>
@@ -877,7 +918,6 @@ function App() {
           </button>
           <button className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-app-border bg-app-surface px-3 py-2 text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={logout} aria-label="Logout" title="Logout">
             <LogOut size={16} aria-hidden="true" />
-            <span className="hidden text-sm font-semibold sm:inline">Log out</span>
           </button>
         </div>
       </header>
@@ -891,8 +931,7 @@ function App() {
             aria-label="Close page navigation"
           />
           <aside className="fixed inset-y-0 right-0 z-50 w-[min(21rem,88vw)] overflow-y-auto border-l border-app-border bg-app-card p-5 shadow-2xl lg:hidden" aria-label="Page navigation">
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <strong className="text-sm text-app-text">Page navigation</strong>
+            <div className="mb-5 flex justify-end">
               <button type="button" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-app-border bg-app-surface text-app-text" onClick={() => setIsMobileNavOpen(false)} aria-label="Close page navigation"><X size={18} /></button>
             </div>
             {renderNavigation()}
@@ -916,7 +955,7 @@ function App() {
         <aside className="sticky top-5 hidden h-fit rounded-app border border-app-border bg-app-card p-5 shadow-app backdrop-blur lg:block">
           <div className="flex items-center gap-4 border-b border-app-border pb-4">
             <div className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-[18px] bg-gradient-to-br from-blue-500/90 to-sky-500/50 text-lg font-extrabold text-white">{currentIdentity.fullName.slice(0, 1)}</div>
-            <div>
+            <div className="min-w-0">
               <h2 className="m-0 text-base font-semibold text-app-text">{currentIdentity.fullName}</h2>
               <p className="mt-1 text-sm text-app-muted">{roleLabels[state.viewerRole]} · {currentIdentity.department}</p>
             </div>
@@ -944,6 +983,7 @@ function App() {
           {state.activeView === 'dashboard' && (
             <DashboardViewPage
               profile={currentIdentity}
+              isFirstLogin={state.showFirstLoginWelcome}
               stats={stats}
               applications={studentApplications}
               eligibleScholarships={eligiblePreview}
@@ -955,6 +995,8 @@ function App() {
               onTrackScholarship={applyToScholarship}
               onMarkRead={markNotificationRead}
               onShowApplications={() => navigate('applications')}
+              hasIncompleteProfile={hasIncompleteStudentProfile}
+              onCompleteProfile={openAcademicProfile}
             />
           )}
 

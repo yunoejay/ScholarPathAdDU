@@ -3,9 +3,9 @@ const clsx = (...values) => values.flat(Infinity).filter(Boolean).join(' ');
 export const buttonClasses = {
   base: 'inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60',
   primary: 'bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright text-white shadow-sm',
-  secondary: 'border border-app-border bg-app-surface text-app-text',
-  ghost: 'border border-transparent text-app-muted hover:bg-app-surface hover:text-app-text',
-  danger: 'border border-rose-400/30 bg-rose-500/10 text-rose-200',
+  secondary: 'border border-blue-500/35 bg-gradient-to-br from-ateneo-strong/20 via-ateneo/15 to-ateneo-bright/10 text-app-text shadow-card hover:border-blue-500/60 hover:from-ateneo-strong/30 hover:via-ateneo/25 hover:to-ateneo-bright/20',
+  ghost: 'border border-transparent text-app-muted hover:bg-blue-500/10 hover:text-app-text',
+  danger: 'border border-rose-400/30 bg-gradient-to-br from-rose-500/15 to-orange-400/10 text-rose-700 shadow-card hover:border-rose-400/55 dark:text-rose-200',
 };
 
 export function Button({ variant = 'secondary', className = '', children, ...props }) {
@@ -14,11 +14,11 @@ export function Button({ variant = 'secondary', className = '', children, ...pro
 
 export function Card({ title, action, children, className = '', ...props }) {
   return (
-    <section className={clsx('rounded-app border bg-app-card p-5 shadow-app backdrop-blur', className)} {...props}>
+    <section className={clsx('relative overflow-hidden rounded-app border bg-app-card p-5 shadow-app backdrop-blur before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-ateneo before:via-sky-400 before:to-cyan-300', className)} {...props}>
       {(title || action) && (
-        <div className="mb-4 flex items-start justify-between gap-4">
-          {title && <h3>{title}</h3>}
-          {action}
+        <div className="card-header mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
+          {title && <h3 className="min-w-0 flex-1">{title}</h3>}
+          {action && <div className="card-header-action shrink-0">{action}</div>}
         </div>
       )}
       {children}
@@ -68,9 +68,9 @@ export function ModalShell({ title, closeLabel = 'Close', onClose, children, cla
     <div className={clsx('modal-overlay', overlayClassName)} role="presentation" onClick={onClose}>
       <section className={clsx('rounded-app border bg-app-card p-5 shadow-app backdrop-blur', className)} role="dialog" aria-modal="true" aria-label={title || undefined} onClick={(event) => event.stopPropagation()} {...props}>
         {(title || onClose) && (
-          <div className="mb-4 flex items-start justify-between gap-4">
-            {title && <h2>{title}</h2>}
-            {onClose && <Button variant="secondary" type="button" onClick={onClose}>{closeLabel}</Button>}
+          <div className="card-header mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
+            {title && <h2 className="min-w-0 flex-1">{title}</h2>}
+            {onClose && <div className="shrink-0"><Button variant="secondary" type="button" onClick={onClose}>{closeLabel}</Button></div>}
           </div>
         )}
         {children}

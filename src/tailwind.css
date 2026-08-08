@@ -5,11 +5,11 @@
 @layer base {
   :root {
     color-scheme: dark;
-    --bg: radial-gradient(circle at top left, rgba(59, 130, 246, 0.28), transparent 28%), radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%), linear-gradient(180deg, #050b15 0%, #091525 100%);
-    --card: rgba(11, 23, 40, 0.86);
-    --card-border: rgba(148, 163, 184, 0.18);
-    --surface: rgba(15, 23, 42, 0.78);
-    --surface-2: rgba(15, 23, 42, 0.45);
+    --bg: radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.34), transparent 30%), radial-gradient(circle at 96% 8%, rgba(14, 165, 233, 0.22), transparent 26%), linear-gradient(145deg, #06132b 0%, #0b1d3a 48%, #071426 100%);
+    --card: rgba(10, 28, 58, 0.88);
+    --card-border: rgba(125, 182, 255, 0.24);
+    --surface: rgba(20, 46, 88, 0.82);
+    --surface-2: rgba(20, 46, 88, 0.52);
     --muted-surface: rgba(148, 163, 184, 0.12);
     --text: #e5eefc;
     --muted: #9fb0cb;
@@ -17,8 +17,8 @@
     --warning: #fbbf24;
     --danger: #fb7185;
     --accent: #bfdbfe;
-    --shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
-    --shadow-card: var(--shadow);
+    --shadow: 0 24px 70px rgba(0, 8, 25, 0.34);
+    --shadow-card: 0 12px 30px rgba(0, 8, 25, 0.22);
     --radius-app: 24px;
     --radius-control: 14px;
     font-family: theme('fontFamily.sans');
@@ -30,18 +30,18 @@
 
   .theme-light {
     color-scheme: light;
-    --bg: #ffffff;
-    --card: rgba(255, 255, 255, 0.92);
-    --card-border: rgba(2, 6, 23, 0.06);
-    --surface: rgba(255, 255, 255, 0.96);
-    --surface-2: rgba(255, 255, 255, 0.88);
-    --muted-surface: rgba(2, 6, 23, 0.04);
-    --text: #0033A0;
-    --muted: #0055D4;
+    --bg: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.14), transparent 30%), radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.12), transparent 28%), linear-gradient(180deg, #f5f9ff 0%, #edf4ff 52%, #f8fbff 100%);
+    --card: rgba(255, 255, 255, 0.94);
+    --card-border: rgba(30, 78, 140, 0.14);
+    --surface: rgba(239, 246, 255, 0.92);
+    --surface-2: rgba(226, 238, 255, 0.76);
+    --muted-surface: rgba(30, 78, 140, 0.07);
+    --text: #102a56;
+    --muted: #526b91;
     --primary: #0033A0;
-    --accent: #0033A0;
-    --shadow: 0 18px 44px rgba(2, 6, 23, 0.06);
-    --shadow-card: var(--shadow);
+    --accent: #0055d4;
+    --shadow: 0 22px 55px rgba(23, 70, 130, 0.12);
+    --shadow-card: 0 10px 26px rgba(23, 70, 130, 0.08);
     --radius-app: 24px;
     --radius-control: 14px;
   }

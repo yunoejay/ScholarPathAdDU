@@ -5,20 +5,14 @@ import { StatusBadge } from '../components/ui';
 import { getApplicationProgress } from '../lib/eligibility';
 import { fmtDate, toPercent } from '../lib/formatters';
 import { SelectPicker } from './LoginScreen';
+import { documentTypeOptions, getDocumentTypeLabel } from '../lib/constants';
 
 export default function ApplicationsAndVault({ applications, documents, scholarships, onUpload, onSubmit }) {
-  const documentTypeOptions = [
-    { value: 'Income Proof', label: 'Income Proof' },
-    { value: 'Transcript', label: 'Transcript' },
-    { value: 'Enrollment', label: 'Enrollment' },
-    { value: 'Clearance', label: 'Clearance' },
-    { value: 'Supporting Document', label: 'Supporting Document' },
-  ];
-  const [documentType, setDocumentType] = useState('Income Proof');
+  const [documentType, setDocumentType] = useState(documentTypeOptions[0].value);
 
   const handleUpload = (event) => {
     onUpload(event);
-    setDocumentType('Income Proof');
+    setDocumentType(documentTypeOptions[0].value);
   };
 
   const downloadApplicationPDF = (application) => {
@@ -121,7 +115,7 @@ Exported from ScholarPath AdDU
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3>{doc.title}</h3>
-                    <p>{doc.fileName} · {doc.documentType}</p>
+                    <p>{doc.fileName} · {getDocumentTypeLabel(doc.documentType)}</p>
                   </div>
                   <StatusBadge tone={doc.verificationStatus === 'Verified' ? 'success' : doc.verificationStatus === 'Rejected' ? 'danger' : 'warning'}>{doc.verificationStatus}</StatusBadge>
                 </div>

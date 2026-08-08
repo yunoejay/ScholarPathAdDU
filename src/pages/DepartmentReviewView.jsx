@@ -4,11 +4,10 @@ import { fmtCurrency } from '../lib/formatters';
 export default function DepartmentReviewView({ profile, queue, onChangeApplication }) {
   return (
     <div className="grid gap-4">
-      <section className="flex flex-col items-start justify-between gap-4 md:flex-row rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-ateneo-bright">Department review</span>
+      <section className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row">
+        <div className="page-title-copy">
+          <span className="page-section-label">Department review</span>
           <h2>{profile.department} applicant screening</h2>
-          <p>Department chairs can assess economic status and endorse Grant-in-Aid candidates.</p>
         </div>
       </section>
 
@@ -16,7 +15,7 @@ export default function DepartmentReviewView({ profile, queue, onChangeApplicati
         <div>
           <span className="text-xs font-bold uppercase tracking-[0.14em] text-ateneo-bright">Department chair view</span>
           <h3 className="mt-1">Focused on economic screening and endorsement decisions.</h3>
-          <p className="mt-1 text-sm text-app-muted">This dashboard surfaces GIA applicants for review, even before the backend is connected.</p>
+          <p className="mt-1 text-sm text-app-muted">Review GIA applicants, confirm their eligibility information, and send your recommendation to OSA.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {['Endorsements', 'GIA', 'Economic status'].map((label) => <StatusBadge key={label}>{label}</StatusBadge>)}

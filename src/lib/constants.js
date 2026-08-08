@@ -2,6 +2,20 @@ export const coverageTypes = ['all', 'Full Tuition', 'Partial Tuition', 'Allowan
 export const applicationStatuses = ['Draft', 'Submitted', 'Under Review', 'For Verification', 'Approved', 'Rejected'];
 export const verificationStatuses = ['Pending', 'Verified', 'Rejected'];
 
+export const documentTypeOptions = [
+  { value: 'Income Proof', label: 'Income Doc' },
+  { value: 'Transcript', label: 'Transcript' },
+  { value: 'Enrollment', label: 'Enrollment' },
+  { value: 'Clearance', label: 'Clearance' },
+  { value: 'Government ID', label: 'Government ID' },
+  { value: 'Recommendation Letter', label: 'Recommendation' },
+  { value: 'Supporting Document', label: 'Supporting Doc' },
+];
+
+export const getDocumentTypeLabel = (value) => (
+  documentTypeOptions.find((option) => option.value === value)?.label || value
+);
+
 export const citizenshipOptions = ['Filipino', 'Non-Filipino'];
 
 export const applicantTypeOptions = [
