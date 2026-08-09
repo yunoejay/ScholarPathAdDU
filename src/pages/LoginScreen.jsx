@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, ChevronDown, Eye, EyeOff, LoaderCircle, Moon, Sun } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowLeft, Check, ChevronDown, Eye, EyeOff, LoaderCircle, Moon, Search, Sun, X } from 'lucide-react';
 import bgImage from '../../pictures/picture1.png';
 import logoImage from '../../pictures/logo.png';
 import { signInWithGoogle } from '../lib/auth';
+import { ModalShell } from '../components/ui';
 
 const roleOptions = [
   { value: 'student', label: 'Student' },
@@ -117,7 +119,7 @@ function RolePicker({ label, value, onChange, idPrefix }) {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[18] border-0 bg-slate-950/10 backdrop-blur-[1px]"
+            className="fixed inset-0 z-[18] border-0 bg-slate-950/5"
             aria-label={`Close ${label.toLowerCase()} menu`}
             onClick={() => setOpen(false)}
             tabIndex={-1}
@@ -144,94 +146,42 @@ function RolePicker({ label, value, onChange, idPrefix }) {
 
 function SelectPicker({ label, value, onChange, options, idPrefix }) {
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const pickerRef = useRef(null);
+  const [query, setQuery] = useState('');
+  const selectableOptions = options.filter((option) => !option.isGroup);
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredOptions = options.filter((option) => option.isGroup || !normalizedQuery || option.label.toLowerCase().includes(normalizedQuery));
 
   useEffect(() => {
-    if (open) {
-      const currentIndex = options.findIndex((option) => option.value === value);
-      setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
-    }
-  }, [open, value, options]);
-
-  useEffect(() => {
-    const handlePointerDown = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setOpen(false);
-      }
-    };
-
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setOpen(false);
       }
     };
 
-    document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
-  const selectedOption = options.find((option) => option.value === value) ?? options[0];
+  const selectedOption = selectableOptions.find((option) => option.value === value) ?? selectableOptions[0];
 
   const chooseOption = (nextValue) => {
     onChange(nextValue);
     setOpen(false);
+    setQuery('');
   };
 
   const handleKeyDown = (event) => {
     if (!open && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
       event.preventDefault();
       setOpen(true);
-      return;
-    }
-
-    if (!open) {
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      setOpen(false);
-      return;
-    }
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setActiveIndex((previous) => (previous + 1) % options.length);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setActiveIndex((previous) => (previous - 1 + options.length) % options.length);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      setActiveIndex(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      setActiveIndex(options.length - 1);
-      return;
-    }
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      chooseOption(options[activeIndex].value);
     }
   };
 
   return (
-    <div className={`relative grid gap-2 ${open ? 'z-[31]' : ''}`} ref={pickerRef} onKeyDown={handleKeyDown}>
+    <div className="relative grid gap-2" onKeyDown={handleKeyDown}>
       <span className="text-sm font-semibold text-app-text">{label}</span>
       <button
         type="button"
@@ -245,31 +195,22 @@ function SelectPicker({ label, value, onChange, options, idPrefix }) {
         <ChevronDown className="h-5 w-5 shrink-0 text-app-muted" size={18} aria-hidden="true" />
       </button>
 
-      {open && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[18] border-0 bg-slate-950/10 backdrop-blur-[1px]"
-            aria-label={`Close ${label.toLowerCase()} menu`}
-            onClick={() => setOpen(false)}
-            tabIndex={-1}
-          />
-          <div className="select-picker-menu select-picker-menu--open" id={`${idPrefix}-list`} role="listbox" aria-label={label}>
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={value === option.value}
-                className={`select-picker-option ${value === option.value ? 'is-selected' : ''} ${options[activeIndex].value === option.value ? 'is-active' : ''}`}
-                onClick={() => chooseOption(option.value)}
-              >
-                <strong>{option.label}</strong>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {open && createPortal(<ModalShell title={`Choose ${label}`} onClose={() => { setOpen(false); setQuery(''); }} className="select-picker-modal" overlayClassName="select-picker-modal-overlay">
+        <div className="select-picker-search relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-app-muted" size={17} aria-hidden="true" />
+          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${label.toLowerCase()}`} aria-label={`Search ${label}`} className="pl-10" />
+        </div>
+        <div className="select-picker-modal-list" id={`${idPrefix}-list`} role="listbox" aria-label={label}>
+          {filteredOptions.length ? filteredOptions.map((option) => option.isGroup ? (
+            <div key={option.value} className="select-picker-group" role="presentation">{option.label}</div>
+          ) : (
+            <button key={option.value} type="button" role="option" aria-selected={value === option.value} className={`select-picker-option ${value === option.value ? 'is-selected' : ''}`} onClick={() => chooseOption(option.value)}>
+              <span className="min-w-0 flex-1"><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>
+              {value === option.value && <Check size={17} aria-hidden="true" />}
+            </button>
+          )) : <p className="select-picker-empty">No {label.toLowerCase()} options match your search.</p>}
+        </div>
+      </ModalShell>, document.body)}
     </div>
   );
 }

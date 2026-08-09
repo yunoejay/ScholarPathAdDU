@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
-import { academicPrograms } from '../lib/academicPrograms';
+import { academicProgramCategories, academicPrograms } from '../lib/academicPrograms';
 import { rankScholarships } from '../lib/eligibility';
 import { Card, EmptyState, ScholarshipRow } from '../components/pageParts';
 import { SelectPicker } from './LoginScreen';
@@ -193,7 +193,12 @@ export default function EligibilityChecker({ profileDraft, scholarships, onApply
               label="Degree program"
               value={editableProfile.degreeProgram}
               onChange={(value) => updateEditableProfile({ degreeProgram: value })}
-              options={academicPrograms.map((program) => ({ value: program.value, label: program.label }))}
+              options={academicProgramCategories.flatMap((category) => [
+                { value: `category-${category}`, label: category, isGroup: true },
+                ...academicPrograms
+                  .filter((program) => program.category === category)
+                  .map((program) => ({ value: program.value, label: program.label })),
+              ])}
               idPrefix="eligibility-degree"
             />
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-app-border bg-app-surface p-3 text-sm font-semibold text-app-text">

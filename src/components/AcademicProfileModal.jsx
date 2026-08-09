@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { academicPrograms, getAcademicProgram } from '../lib/academicPrograms';
+import { academicProgramCategories, academicPrograms, getAcademicProgram } from '../lib/academicPrograms';
 import logoImage from '../../pictures/logo.png';
 import { Button, FormField, ModalShell } from './ui';
+import { SelectPicker } from '../pages/LoginScreen';
 
 export default function AcademicProfileModal({ fullName, initialProgram, initialStudentNumber, initialHouseholdIncome, initialQpi, initialHasActiveGovernmentGrant, onSave, isSaving, errorMessage }) {
   const [program, setProgram] = useState(initialProgram || '');
@@ -11,6 +12,10 @@ export default function AcademicProfileModal({ fullName, initialProgram, initial
   const [hasActiveGovernmentGrant, setHasActiveGovernmentGrant] = useState(Boolean(initialHasActiveGovernmentGrant));
   const [validationError, setValidationError] = useState('');
   const selectedProgram = getAcademicProgram(program || academicPrograms[0].value);
+  const programOptions = academicProgramCategories.flatMap((category) => [
+    { value: `group-${category}`, label: category, isGroup: true },
+    ...academicPrograms.filter((option) => option.category === category),
+  ]);
 
   useEffect(() => {
     setProgram(initialProgram || '');
@@ -62,10 +67,13 @@ export default function AcademicProfileModal({ fullName, initialProgram, initial
             <input className="min-h-12 rounded-control" value={studentNumber} onChange={(event) => { setStudentNumber(event.target.value.replace(/\D/g, '').slice(0, 12)); setValidationError(''); }} inputMode="numeric" autoComplete="off" placeholder="Enter Student ID No. (7 digits, alphanumeric)" required />
           </FormField>
           <FormField label="Program / Course">
-            <select className="min-h-12 rounded-control" value={program} onChange={(event) => setProgram(event.target.value)} required>
-              <option value="" disabled>Select your program</option>
-              {academicPrograms.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            <SelectPicker
+              label="Program / Course"
+              value={program}
+              onChange={(value) => { setProgram(value); setValidationError(''); }}
+              options={programOptions}
+              idPrefix="academic-profile-program"
+            />
           </FormField>
           <FormField label="Annual household income" hint="Combined household income for one year, in Philippine pesos.">
             <input className="min-h-12 rounded-control" value={householdIncome} onChange={(event) => { setHouseholdIncome(event.target.value.replace(/[^\d]/g, '')); setValidationError(''); }} inputMode="numeric" autoComplete="off" placeholder="e.g. 240000" required />

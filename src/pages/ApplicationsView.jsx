@@ -30,7 +30,7 @@ export default function ApplicationsView({ applications, documents, scholarships
   return <div className="blue-action-view grid gap-4">
     <div className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row">
       <div className="page-title-copy"><span className="page-section-label">Application tracking</span><h1>Application workspace</h1></div>
-      <Button onClick={onOpenVault}>Open Doument Vault</Button>
+      <Button onClick={onOpenVault}>Open Document Vault</Button>
     </div>
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <article className="page-metric rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>Total applications</span><strong>{counts.total}</strong><p>All tracked scholarships</p></article>

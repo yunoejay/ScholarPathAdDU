@@ -14,7 +14,7 @@ export default function ScholarshipExplorer({ profile, scholarships, searchQuery
           <span className="page-section-label">Scholarship explorer</span>
           <h2>Find scholarships that fit your goals</h2>
         </div>
-        <div className="grid w-full gap-3 sm:grid-cols-3 md:w-auto">
+        <div className="grid w-full gap-3 sm:grid-cols-3 md:w-auto text-center">
           <div className="page-metric">
             <strong>{scholarships.length}</strong>
             <span>Visible programs</span>

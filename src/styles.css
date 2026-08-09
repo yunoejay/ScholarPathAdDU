@@ -51,33 +51,33 @@ button.bg-app-card:hover {
 
 /* Keep actions distinct in dark mode: quiet surface controls should not look
    like primary submit buttons, and picker internals must stay untouched. */
-.blue-action-view button:not(.select-picker-option):not(.fixed) {
+.blue-action-view button:not(.select-picker-option):not(.fixed):not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]) {
   border-color: color-mix(in srgb, var(--primary) 34%, var(--card-border)) !important;
   background: color-mix(in srgb, var(--surface) 78%, #020817 22%) !important;
   color: var(--text) !important;
   box-shadow: 0 6px 16px rgba(0, 8, 25, 0.18);
 }
 
-.blue-action-view button[class*="bg-gradient"]:not(.select-picker-option) {
-  border-color: #24539b !important;
-  background: linear-gradient(135deg, #174486 0%, #205aa6 52%, #2b70c4 100%) !important;
+.blue-action-view button.bg-gradient-to-br.from-ateneo-strong.via-ateneo.to-ateneo-bright:not(.select-picker-option) {
+  border-color: #315ca8 !important;
+  background: linear-gradient(135deg, #172554 0%, #1e3a8a 52%, #2563b8 100%) !important;
   color: #ffffff !important;
 }
 
-.blue-action-view button:hover,
-.blue-action-view button:focus-visible {
+.blue-action-view button:not(.select-picker-option):not(.fixed):not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]):hover,
+.blue-action-view button:not(.select-picker-option):not(.fixed):not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]):focus-visible {
   border-color: color-mix(in srgb, var(--primary) 62%, var(--card-border)) !important;
   background: color-mix(in srgb, var(--primary) 18%, var(--surface)) !important;
 }
 
-.blue-action-view button[class*="bg-gradient"]:hover,
-.blue-action-view button[class*="bg-gradient"]:focus-visible {
-  border-color: #78a9e5 !important;
-  background: linear-gradient(135deg, #205aa6 0%, #2b70c4 56%, #3982d8 100%) !important;
+.blue-action-view button.bg-gradient-to-br.from-ateneo-strong.via-ateneo.to-ateneo-bright:hover,
+.blue-action-view button.bg-gradient-to-br.from-ateneo-strong.via-ateneo.to-ateneo-bright:focus-visible {
+  border-color: #7da8ef !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563b8 56%, #3b82d0 100%) !important;
   color: #ffffff !important;
 }
 
-.blue-action-view button:disabled {
+.blue-action-view button:not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]):disabled {
   background: #6683bd !important;
   border-color: #6683bd !important;
   color: #eaf1ff !important;
@@ -136,26 +136,26 @@ button.bg-app-card:hover {
 
 /* Light mode can carry the brighter Ateneo blue; dark mode keeps controls
    lower-contrast so they do not glow against the navy application surface. */
-.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed) {
+.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]) {
   border-color: #174fc4 !important;
   background: color-mix(in srgb, var(--surface) 84%, white 16%) !important;
   color: var(--text) !important;
   box-shadow: 0 6px 16px rgba(23, 70, 130, 0.12);
 }
 
-.theme-light .blue-action-view button[class*="bg-gradient"]:not(.select-picker-option) {
+.theme-light .blue-action-view button.bg-gradient-to-br.from-ateneo-strong.via-ateneo.to-ateneo-bright:not(.select-picker-option) {
   background: linear-gradient(135deg, #002776 0%, #0033a0 52%, #0a4bd1 100%) !important;
   color: #ffffff !important;
 }
 
-.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):hover,
-.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):focus-visible {
+.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]):hover,
+.theme-light .blue-action-view button:not(.select-picker-option):not(.fixed):not(.calendar-cell):not([class*="from-rose"]):not([class*="from-amber"]):focus-visible {
   border-color: #4d8dff !important;
   background: color-mix(in srgb, var(--primary) 10%, var(--surface)) !important;
 }
 
-.theme-light .blue-action-view button[class*="bg-gradient"]:hover,
-.theme-light .blue-action-view button[class*="bg-gradient"]:focus-visible {
+.theme-light .blue-action-view button.bg-gradient-to-br.from-ateneo-strong.via-ateneo.to-ateneo-bright:hover,
+.theme-light .blue-action-view button.bg-gradient-to-br.from-ateneo-strong.via-ateneo.to-ateneo-bright:focus-visible {
   background: linear-gradient(135deg, #0033a0 0%, #0a4bd1 56%, #2563eb 100%) !important;
   color: #ffffff !important;
 }
@@ -492,6 +492,84 @@ main .deadline-item > .deadline-actions {
   animation: selectPickerIn 140ms ease-out;
 }
 
+/* Program and filter pickers use a modal so long grouped lists remain easy to
+   scan on both desktop and mobile instead of extending from a form field. */
+.select-picker-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  z-index: 1100;
+  padding: clamp(0.75rem, 3vw, 2rem);
+}
+
+.select-picker-modal {
+  width: min(560px, 100%);
+  max-height: min(82vh, 720px);
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.select-picker-modal .card-header {
+  align-items: center;
+}
+
+.select-picker-search {
+  margin-bottom: 1rem;
+}
+
+.select-picker-modal-list {
+  display: grid;
+  max-height: min(52vh, 440px);
+  gap: 0.35rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.select-picker-modal-list .select-picker-group {
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.8rem 0.25rem;
+  color: var(--accent);
+}
+
+.select-picker-modal-list .select-picker-group:first-child {
+  margin-top: 0;
+}
+
+.select-picker-modal-list .select-picker-option {
+  min-height: 3.25rem;
+  justify-content: space-between;
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.select-picker-modal-list .select-picker-option:hover,
+.select-picker-modal-list .select-picker-option:focus-visible,
+.select-picker-modal-list .select-picker-option.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--card-border));
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  transform: none;
+}
+
+.select-picker-modal-list .select-picker-option span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.select-picker-modal-list .select-picker-option small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.select-picker-empty {
+  margin: 0;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
 .select-picker-option {
   display: flex;
   align-items: center;
@@ -504,6 +582,21 @@ main .deadline-item > .deadline-actions {
   border-radius: 12px;
   padding: 0.75rem 0.8rem;
   transition: background 0.14s ease, transform 0.14s ease;
+}
+
+.select-picker-group {
+  padding: 0.55rem 0.8rem 0.25rem;
+  color: var(--primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.select-picker-group:not(:first-child) {
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--card-border);
+  padding-top: 0.85rem;
 }
 
 .select-picker-option:hover,
