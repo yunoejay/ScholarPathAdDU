@@ -23,7 +23,6 @@ export default function DocumentVaultView({ documents, onUpload, onDelete, onOpe
     setType(documentTypeOptions[0].value);
   };
   return <div className="blue-action-view grid gap-4">
-    <div className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row"><div className="page-title-copy"><span className="page-section-label">Document management</span><h1>Document Vault</h1></div><button className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={onOpenApplications}>View Applications</button></div>
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <article className="page-metric rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>Total documents</span><strong>{documents.length}</strong><p>of 20 available slots</p></article>
       <article className="page-metric rounded-app border bg-app-card p-5 shadow-app backdrop-blur"><span>Verified</span><strong>{documents.filter((d) => d.verificationStatus === 'Verified').length}</strong><p>Ready to reuse</p></article>

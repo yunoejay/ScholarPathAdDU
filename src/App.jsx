@@ -381,7 +381,6 @@ function App() {
     () => state.documents.filter((entry) => entry.ownerId === currentProfile.id),
     [state.documents, currentProfile.id],
   );
-
   const visibleNotifications = state.notificationPreferences.inAppEnabled ? state.notifications : [];
   const unreadNotifications = useMemo(() => visibleNotifications.filter((entry) => entry.status === 'Unread'), [visibleNotifications]);
   const activeDeadlineCount = useMemo(
@@ -986,6 +985,8 @@ function App() {
               isFirstLogin={state.showFirstLoginWelcome}
               stats={stats}
               applications={studentApplications}
+              scholarships={scholarshipCatalog}
+              customDeadlines={state.customDeadlines}
               eligibleScholarships={eligiblePreview}
               notifications={visibleNotifications}
               announcements={state.announcements}
@@ -995,6 +996,7 @@ function App() {
               onTrackScholarship={applyToScholarship}
               onMarkRead={markNotificationRead}
               onShowApplications={() => navigate('applications')}
+              onOpenCalendar={() => navigate('calendar')}
               hasIncompleteProfile={hasIncompleteStudentProfile}
               onCompleteProfile={openAcademicProfile}
             />

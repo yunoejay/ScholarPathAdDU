@@ -46,7 +46,6 @@ export default function SettingsView({ notificationPreferences, onUpdatePreferen
   return (
     <div className="grid gap-4">
       <section className="page-title-bar rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-        <span className="page-section-label">Preferences</span>
         <h2 className="mt-2 text-xl font-bold text-app-text">Notification center settings</h2>
 
         <div className="mt-8 border-t border-app-border pt-6">

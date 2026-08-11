@@ -96,9 +96,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
   return (
     <div className="grid gap-4">
       <section className="page-title-bar rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-        <div className="page-title-copy">
-        <span className="page-section-label">Deadline reminders</span>
-        <h2>Deadline calendar</h2>
+        <div className="page-title-copy"> 
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <div className="calendar-grid">

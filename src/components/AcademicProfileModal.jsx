@@ -66,7 +66,6 @@ export default function AcademicProfileModal({ fullName, initialProgram, initial
           <FormField label="AdDU student number" hint="Use the number shown on your AdDU ID or registration record.">
             <input className="min-h-12 rounded-control" value={studentNumber} onChange={(event) => { setStudentNumber(event.target.value.replace(/\D/g, '').slice(0, 12)); setValidationError(''); }} inputMode="numeric" autoComplete="off" placeholder="Enter Student ID No. (7 digits, alphanumeric)" required />
           </FormField>
-          <FormField label="Program / Course">
             <SelectPicker
               label="Program / Course"
               value={program}
@@ -74,7 +73,6 @@ export default function AcademicProfileModal({ fullName, initialProgram, initial
               options={programOptions}
               idPrefix="academic-profile-program"
             />
-          </FormField>
           <FormField label="Annual household income" hint="Combined household income for one year, in Philippine pesos.">
             <input className="min-h-12 rounded-control" value={householdIncome} onChange={(event) => { setHouseholdIncome(event.target.value.replace(/[^\d]/g, '')); setValidationError(''); }} inputMode="numeric" autoComplete="off" placeholder="e.g. 240000" required />
           </FormField>
