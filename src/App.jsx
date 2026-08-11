@@ -207,6 +207,14 @@ function App() {
   const [profileSaveError, setProfileSaveError] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  const updateState = (updater) => setState((previous) => {
+    const nextState = typeof updater === 'function' ? updater(previous) : updater;
+    return {
+      ...previous,
+      ...nextState,
+    };
+  });
+
   useEffect(() => {
     window.localStorage.setItem(storageKey, JSON.stringify(state));
   }, [state]);
@@ -394,14 +402,6 @@ function App() {
     openApplications: studentApplications.filter((entry) => entry.status !== 'Rejected' && entry.status !== 'Approved').length,
     unreadNotifications: unreadNotifications.length,
   }), [eligibleScholarships.length, scholarshipCatalog.length, studentApplications, unreadNotifications.length]);
-
-  const updateState = (updater) => setState((previous) => {
-    const nextState = typeof updater === 'function' ? updater(previous) : updater;
-    return {
-      ...previous,
-      ...nextState,
-    };
-  });
 
   const switchRole = (role) => {
     updateState((previous) => ({
