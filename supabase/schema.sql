@@ -15,6 +15,7 @@ create table if not exists profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table profiles add column if not exists student_number text;
 
 create table if not exists scholarships (
   id uuid primary key default gen_random_uuid(),
@@ -85,6 +86,7 @@ create table if not exists notifications (
 
 create table if not exists department_reviews (
   id uuid primary key default gen_random_uuid(),
+  application_id uuid references applications(id) on delete cascade,
   reviewer_id uuid not null references profiles(user_id) on delete cascade,
   student_name text not null,
   department text not null,
@@ -94,6 +96,7 @@ create table if not exists department_reviews (
   recommendation text,
   created_at timestamptz not null default now()
 );
+alter table department_reviews add column if not exists application_id uuid references applications(id) on delete cascade;
 
 alter table profiles enable row level security;
 alter table scholarships enable row level security;
@@ -104,15 +107,97 @@ alter table announcements enable row level security;
 alter table notifications enable row level security;
 alter table department_reviews enable row level security;
 
+-- Role helpers are security-definer functions so RLS checks do not recurse
+-- through the profiles table. The role is still stored in profiles and is
+-- never accepted from the browser for authorization decisions.
+create or replace function public.current_profile_role()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$ select role from public.profiles where user_id = auth.uid() limit 1 $$;
+
+create or replace function public.current_profile_department()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$ select department from public.profiles where user_id = auth.uid() limit 1 $$;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, full_name, role, email, student_number)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1), 'ScholarPath user'),
+    -- Public registration cannot grant privileged roles. Assign OSA Admin or
+    -- Department Chair only after verifying the account in Supabase.
+    'student',
+    new.email,
+    nullif(new.raw_user_meta_data->>'student_id', '')
+  )
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+drop policy if exists "profiles_self_read_write" on profiles;
+drop policy if exists "staff_read_profiles" on profiles;
+drop policy if exists "scholarships_read_all" on scholarships;
+drop policy if exists "documents_self_access" on documents;
+drop policy if exists "osa_documents_access" on documents;
+drop policy if exists "applications_self_access" on applications;
+drop policy if exists "osa_applications_access" on applications;
+drop policy if exists "chair_applications_read" on applications;
+drop policy if exists "chair_applications_status" on applications;
+drop policy if exists "application_documents_self_access" on application_documents;
+drop policy if exists "staff_application_documents_access" on application_documents;
+drop policy if exists "announcements_read_all" on announcements;
+drop policy if exists "osa_announcements_manage" on announcements;
+drop policy if exists "notifications_self_access" on notifications;
+drop policy if exists "department_reviews_restricted" on department_reviews;
+drop policy if exists "chair_department_reviews_access" on department_reviews;
+
 create policy "profiles_self_read_write" on profiles
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "staff_read_profiles" on profiles
+for select using (public.current_profile_role() in ('osa_admin', 'department_chair'));
 
 create policy "scholarships_read_all" on scholarships
 for select using (true);
 create policy "documents_self_access" on documents
 for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+create policy "osa_documents_access" on documents
+for all using (public.current_profile_role() = 'osa_admin') with check (public.current_profile_role() = 'osa_admin');
 create policy "applications_self_access" on applications
 for all using (auth.uid() = student_id) with check (auth.uid() = student_id);
+create policy "osa_applications_access" on applications
+for all using (public.current_profile_role() = 'osa_admin') with check (public.current_profile_role() = 'osa_admin');
+create policy "chair_applications_read" on applications
+for select using (
+  public.current_profile_role() = 'department_chair'
+  and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
+);
+create policy "chair_applications_status" on applications
+for update using (
+  public.current_profile_role() = 'department_chair'
+  and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
+) with check (
+  public.current_profile_role() = 'department_chair'
+  and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
+);
 create policy "application_documents_self_access" on application_documents
 for all using (
   exists (
@@ -123,9 +208,17 @@ for all using (
     select 1 from applications a where a.id = application_id and a.student_id = auth.uid()
   )
 );
+create policy "staff_application_documents_access" on application_documents
+for all using (public.current_profile_role() in ('osa_admin', 'department_chair'))
+with check (public.current_profile_role() in ('osa_admin', 'department_chair'));
 create policy "announcements_read_all" on announcements
 for select using (true);
+create policy "osa_announcements_manage" on announcements
+for insert with check (public.current_profile_role() = 'osa_admin' and created_by = auth.uid());
 create policy "notifications_self_access" on notifications
 for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
 create policy "department_reviews_restricted" on department_reviews
 for select using (auth.uid() = reviewer_id);
+create policy "chair_department_reviews_access" on department_reviews
+for all using (public.current_profile_role() = 'department_chair' and auth.uid() = reviewer_id)
+with check (public.current_profile_role() = 'department_chair' and auth.uid() = reviewer_id);

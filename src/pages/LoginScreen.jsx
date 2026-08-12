@@ -527,24 +527,13 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                   required
                 />
               </label>
-              <RolePicker
-                label="Role"
-                value={createAccountData.role}
-                onChange={(nextRole) => updateCreateAccountData('role', nextRole)}
-                idPrefix="create-account"
-              />
-              {createAccountData.role !== 'student' && (
-                <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-app-text">Verification Code</span>
-                  <input
-                    type="text"
-                    value={createAccountData.verificationCode}
-                    onChange={(e) => updateCreateAccountData('verificationCode', e.target.value)}
-                    placeholder="Enter verification code"
-                    required
-                  />
-                </label>
-              )}
+              <div className="grid gap-2">
+                <span className="text-sm font-semibold text-app-text">Account type</span>
+                <div className="rounded-xl border border-app-border bg-app-surface px-4 py-3 text-sm text-app-text">
+                  <strong>Student</strong>
+                  <p className="mt-1 text-xs text-app-muted">OSA Admin and Department Chair accounts are provisioned by an administrator.</p>
+                </div>
+              </div>
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-app-text">Password</span>
                 <div className="relative">

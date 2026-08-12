@@ -2,7 +2,7 @@ import { AnnouncementItem, Card, EmptyState, NotificationItem, ScholarshipRow, S
 import { ArrowRight, CalendarDays, CircleAlert } from 'lucide-react';
 import { fmtCurrency, fmtDate } from '../lib/formatters';
 
-export default function DashboardView({ profile, isFirstLogin, stats, applications, scholarships, customDeadlines = [], eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onTrackScholarship, onMarkRead, onShowApplications, onOpenCalendar, hasIncompleteProfile, onCompleteProfile }) {
+export default function DashboardView({ profile, isFirstLogin, stats, applications, scholarships, customDeadlines = [], eligibleScholarships, notifications, announcements, onOpenExplorer, onOpenEligibility, onTrackScholarship, onMarkRead, onShowApplications, onOpenCalendar, onOpenAdmin, onOpenReview, hasIncompleteProfile, onCompleteProfile }) {
   // Student Dashboard
   if (profile.role === 'student') {
     const draftApplication = applications.find((entry) => entry.status === 'Draft');
@@ -119,41 +119,15 @@ export default function DashboardView({ profile, isFirstLogin, stats, applicatio
   if (profile.role === 'osa_admin') {
     return (
       <div className="grid gap-4">
-        <section className="welcome-banner rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-          <p className="welcome-message">Welcome, {profile.fullName || 'Administrator'}! Here's your OSA dashboard.</p>
+        <section className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row md:items-center">
+          <div className="page-title-copy"><span className="page-section-label">OSA administrator workspace</span><h2>Good day, {profile.fullName || 'Administrator'}</h2><p>Keep application review, document verification, and student updates moving.</p></div>
+          <button type="button" onClick={onOpenAdmin} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-5 py-2 text-sm font-bold text-white shadow-sm">Open OSA Console <ArrowRight className="ml-2" size={16} /></button>
         </section>
-
-        <section className="grid gap-6 rounded-app border bg-app-card p-5 shadow-app backdrop-blur lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-          <div>
-            <h1>Review applications and documents</h1>
-          </div>
-          <div className="grid content-start gap-3">
-            <div className="rounded-[18px] border border-app-border bg-app-surface p-4">
-              <span>Role</span>
-              <strong>OSA Administrator</strong>
-              <p>Applications, document verification, and announcements</p>
-            </div>
-            <div className="rounded-[18px] border border-blue-400/30 bg-blue-500/10 p-4">
-              <span>Functions</span>
-              <p>Use the OSA Console to review applications, verify documents, and share important announcements.</p>
-            </div>
-          </div>
+        <section className="grid gap-4 sm:grid-cols-3"><StatCard label="Applications to review" value={stats.openApplications} note="Submitted and under review" /><StatCard label="Programs available" value={stats.totalPrograms} note="Active scholarship pipelines" /><StatCard label="Unread alerts" value={stats.unreadNotifications} note="Needs attention" /></section>
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
+          <article className="rounded-app border border-blue-400/30 bg-gradient-to-br from-blue-500/15 via-app-card to-app-card p-5 shadow-app"><span className="eyebrow text-blue-700 dark:text-blue-200">Today’s priorities</span><h2 className="mt-2 text-xl font-bold">Start with the OSA Console</h2><p className="mt-2 max-w-2xl text-sm text-app-muted">Review the oldest applications first, verify supporting documents, then publish any scholarship updates that students need to see.</p><button type="button" onClick={onOpenAdmin} className="mt-5 inline-flex min-h-10 items-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white">Review work queues <ArrowRight className="ml-2" size={16} /></button></article>
+          <div className="grid gap-3"><div className="rounded-[18px] border border-app-border bg-app-surface p-4"><span className="text-xs font-semibold uppercase tracking-wide text-app-muted">Role</span><strong className="mt-1 block">OSA Administrator</strong><p className="mt-1 text-sm text-app-muted">Centralized scholarship operations</p></div><div className="rounded-[18px] border border-app-border bg-app-surface p-4"><span className="text-xs font-semibold uppercase tracking-wide text-app-muted">Workspace status</span><strong className="mt-1 block text-emerald-600 dark:text-emerald-300">Ready for review</strong><p className="mt-1 text-sm text-app-muted">Updates are tracked in the notification center.</p></div></div>
         </section>
-
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total applications" value={stats.openApplications} note="Submitted and under review" />
-          <StatCard label="Programs available" value={stats.totalPrograms} note="Active scholarship pipelines" />
-          <StatCard label="Unread alerts" value={stats.unreadNotifications} note="System notifications" />
-        </section>
-
-        <Card title="Quick access">
-          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
-            <EmptyState 
-              title="Ready to manage applications" 
-              description="Use the OSA Console from the sidebar to review applications, verify student documents, and broadcast announcements to the scholarship community." 
-            />
-          </div>
-        </Card>
       </div>
     );
   }
@@ -162,41 +136,9 @@ export default function DashboardView({ profile, isFirstLogin, stats, applicatio
   if (profile.role === 'department_chair') {
     return (
       <div className="grid gap-4">
-        <section className="welcome-banner rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-          <p className="welcome-message">Welcome, {profile.fullName || 'Chair'}! Review endorsements and insights.</p>
-        </section>
-
-        <section className="grid gap-6 rounded-app border bg-app-card p-5 shadow-app backdrop-blur lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-          <div>
-            <h1>Review Grant-in-Aid applicants</h1>
-          </div>
-          <div className="grid content-start gap-3">
-            <div className="rounded-[18px] border border-app-border bg-app-surface p-4">
-              <span>Department</span>
-              <strong>{profile.department}</strong>
-              <p>GIA screening and endorsement decisions</p>
-            </div>
-            <div className="rounded-[18px] border border-blue-400/30 bg-blue-500/10 p-4">
-              <span>Scope</span>
-              <p>Review students in {profile.department} and assess their economic and academic eligibility for GIA support.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Applicants in review" value={stats.openApplications} note="Pending endorsement" />
-          <StatCard label="Your department" value={profile.department} note="Endorsement scope" />
-          <StatCard label="Unread alerts" value={stats.unreadNotifications} note="System notifications" />
-        </section>
-
-        <Card title="Quick access">
-          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
-            <EmptyState 
-              title="Ready to review endorsements" 
-              description="Use the Department Review from the sidebar to filter and assess students within your department, then submit official GIA endorsements to OSA." 
-            />
-          </div>
-        </Card>
+        <section className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row md:items-center"><div className="page-title-copy"><span className="page-section-label">Department Chair workspace</span><h2>{profile.department || 'Department'} endorsements</h2><p>Screen Grant-in-Aid applicants and route clear decisions to OSA.</p></div><button type="button" onClick={onOpenReview} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-5 py-2 text-sm font-bold text-white">Open review queue <ArrowRight className="ml-2" size={16} /></button></section>
+        <section className="grid gap-4 sm:grid-cols-3"><StatCard label="Applicants in review" value={stats.openApplications} note="Pending endorsement" /><StatCard label="Department" value={profile.department} note="Endorsement scope" /><StatCard label="Unread alerts" value={stats.unreadNotifications} note="System notifications" /></section>
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]"><article className="rounded-app border border-blue-400/30 bg-gradient-to-br from-blue-500/15 via-app-card to-app-card p-5 shadow-app"><span className="eyebrow text-blue-700 dark:text-blue-200">Next step</span><h2 className="mt-2 text-xl font-bold">Review departmental endorsements</h2><p className="mt-2 text-sm text-app-muted">Check academic standing, household income, and recommendations before endorsing qualified GIA applicants.</p><button type="button" onClick={onOpenReview} className="mt-5 inline-flex min-h-10 items-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white">Review applicants <ArrowRight className="ml-2" size={16} /></button></article><div className="rounded-[18px] border border-app-border bg-app-surface p-4"><span className="text-xs font-semibold uppercase tracking-wide text-app-muted">Review scope</span><strong className="mt-1 block">{profile.department || 'Your department'}</strong><p className="mt-2 text-sm text-app-muted">Endorse qualified students and flag concerns for OSA document validation.</p></div></section>
       </div>
     );
   }

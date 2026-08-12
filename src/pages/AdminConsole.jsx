@@ -8,37 +8,36 @@ export default function AdminConsole({ applications, documents, announcements, n
   const reviewApplications = applications.filter((entry) => entry.status === 'Submitted' || entry.status === 'Under Review' || entry.status === 'For Verification');
 
   return (
-    <div className="grid gap-4">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-5">
+      <section className="page-title-bar flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row md:items-center">
+        <div className="page-title-copy">
+          <span className="page-section-label">OSA administrator workspace</span>
+          <h2>Scholarship application operations</h2>
+          <p className="mt-2 max-w-2xl text-sm text-app-muted">Review applications, verify documents, and publish updates from one workflow queue.</p>
+        </div>
+        <StatusBadge tone="info">Internal operations</StatusBadge>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pending applications" value={reviewApplications.length} note="Workflow queue for OSA" />
         <StatCard label="Documents for review" value={pendingDocuments.length} note="Blocking final application processing" />
         <StatCard label="Announcements" value={announcements.length} note="Broadcast queue and updates" />
         <StatCard label="Active notifications" value={notifications.length} note="Status mutations trigger alerts" />
       </section>
 
-      <section className="flex flex-col items-start justify-between gap-4 rounded-app border bg-app-card p-5 shadow-app backdrop-blur md:flex-row">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-ateneo-bright">OSA console</span>
-          <h3 className="mt-1">Review applications, verify documents, and publish announcements.</h3>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {['Applications', 'Documents', 'Announcements', 'Notifications'].map((label) => <StatusBadge key={label}>{label}</StatusBadge>)}
-        </div>
-      </section>
-
       <section className="grid gap-4 xl:grid-cols-2">
-        <Card title="Application review queue">
-          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
+        <Card title="Application review queue" action={<StatusBadge tone={reviewApplications.length ? 'warning' : 'success'}>{reviewApplications.length} awaiting action</StatusBadge>}>
+          <div className="grid max-h-[540px] gap-3 overflow-y-auto pr-1">
             {reviewApplications.length ? reviewApplications.map((entry) => (
-              <article key={entry.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
+              <article key={entry.id} className="grid gap-3 rounded-[18px] border border-app-border bg-app-surface p-4 shadow-sm">
                 <div className="flex min-w-0 items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <h3>{entry.scholarshipTitle}</h3>
-                    <p>{entry.status} · Updated {fmtDate(entry.updatedAt)}</p>
+                    <p className="mt-1 text-sm text-app-muted">Updated {fmtDate(entry.updatedAt)}</p>
                   </div>
                   <StatusBadge>Admin</StatusBadge>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 border-t border-app-border pt-3">
                   {applicationStatuses.filter((status) => status !== entry.status).map((status) => (
                     <Button key={status} type="button" onClick={() => onChangeApplication(entry.id, status)}>{status}</Button>
                   ))}
@@ -48,18 +47,18 @@ export default function AdminConsole({ applications, documents, announcements, n
           </div>
         </Card>
 
-        <Card title="Document verification">
-          <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
+        <Card title="Document verification" action={<StatusBadge tone={pendingDocuments.length ? 'warning' : 'success'}>{pendingDocuments.length} pending</StatusBadge>}>
+          <div className="grid max-h-[540px] gap-3 overflow-y-auto pr-1">
             {pendingDocuments.length ? pendingDocuments.map((doc) => (
               <article key={doc.id} className="grid grid-rows-[auto_auto_1fr_auto] items-stretch gap-3 rounded-[18px] border border-app-border bg-app-surface p-4">
                 <div className="flex min-w-0 items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <h3>{doc.title}</h3>
-                    <p>{doc.fileName} · {doc.documentType}</p>
+                    <p className="mt-1 text-sm text-app-muted">{doc.fileName} · {doc.documentType}</p>
                   </div>
                   <StatusBadge tone="warning">Pending</StatusBadge>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 border-t border-app-border pt-3">
                   {verificationStatuses.map((status) => (
                     <Button key={status} type="button" onClick={() => onChangeDocument(doc.id, status)}>{status}</Button>
                   ))}
@@ -70,8 +69,8 @@ export default function AdminConsole({ applications, documents, announcements, n
         </Card>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <Card title="Broadcast announcement">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <Card title="Publish an update">
           <form className="grid gap-4" onSubmit={onCreateAnnouncement}>
             <FormField label="Audience">
               <select name="announcementAudience">
@@ -91,7 +90,7 @@ export default function AdminConsole({ applications, documents, announcements, n
           </form>
         </Card>
 
-        <Card title="Recent announcements">
+        <Card title="Recent announcements" action={<StatusBadge>{announcements.length} published</StatusBadge>}>
           <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {announcements.length ? announcements.map((entry) => (
               <AnnouncementItem key={entry.id} entry={entry} />
@@ -101,7 +100,7 @@ export default function AdminConsole({ applications, documents, announcements, n
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <Card title="Notification feed">
+        <Card title="Notification feed" action={<span className="text-xs text-app-muted">Latest activity</span>}>
           <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-2">
             {notifications.length ? notifications.slice(0, 3).map((entry) => (
               <NotificationItem key={entry.id} entry={entry} onMarkRead={onMarkRead} />

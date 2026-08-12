@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
-import { announcements as seedAnnouncements, applications as seedApplications, degreePrograms, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
-import { getApplicationProgress, getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
+import { announcements as seedAnnouncements, applications as seedApplications, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
+import { getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
 import { getAcademicProgram } from './lib/academicPrograms';
 import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
+import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseDocument, deleteSupabaseDocument, loadSupabaseWorkspace, markSupabaseNotificationRead, submitSupabaseApplication, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus } from './lib/supabaseData';
 import AcademicProfileModal from './components/AcademicProfileModal';
 import { NotificationDropdown } from './components/pageParts';
 import LoginScreenPage from './pages/LoginScreen';
@@ -24,6 +25,8 @@ const roleLabels = {
   osa_admin: 'OSA Admin',
   department_chair: 'Department Chair',
 };
+
+const landingViewForRole = (role) => role === 'osa_admin' ? 'admin' : role === 'department_chair' ? 'review' : 'dashboard';
 
 const getInitials = (fullName = '') => fullName
   .split(/\s+/)
@@ -206,6 +209,7 @@ function App() {
   const [profileOnboarding, setProfileOnboarding] = useState(null);
   const [profileSaveError, setProfileSaveError] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSupabaseWorkspaceLoaded, setIsSupabaseWorkspaceLoaded] = useState(false);
 
   const updateState = (updater) => setState((previous) => {
     const nextState = typeof updater === 'function' ? updater(previous) : updater;
@@ -320,7 +324,7 @@ function App() {
         ...previous,
         isAuthenticated: true,
         viewerRole: userRole,
-        activeView: 'dashboard',
+        activeView: landingViewForRole(userRole),
         authUser: {
           id: user.id,
           email: user.email,
@@ -337,7 +341,12 @@ function App() {
           ? { ...previous.profileDraft, degreeProgram: profile.degree_program }
           : previous.profileDraft,
       }));
-      if (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) {
+      const workspace = await loadSupabaseWorkspace({ role: userRole, userId: user.id, department: profile?.department || '' });
+      if (active && workspace.success) {
+        updateState((previous) => ({ ...previous, ...workspace }));
+        setIsSupabaseWorkspaceLoaded(true);
+      }
+      if (userRole === 'student' && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null)) {
         if (readStoredState()?.profileSkipped) return;
         setProfileOnboarding({ id: user.id, fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Signed in user', initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || user.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
       }
@@ -365,14 +374,19 @@ function App() {
         : demoUsers.student;
   };
 
-  const currentProfile = demoUsers[roleKeyMap[state.viewerRole] || 'student'];
+  const currentProfile = {
+    ...demoUsers[roleKeyMap[state.viewerRole] || 'student'],
+    ...(state.authUser || {}),
+  };
 
   const themeClass = state.theme === 'light' ? 'theme-light' : '';
   const studentMatchProfile = { ...demoUsers.student, ...state.profileDraft, ...(state.authUser || {}) };
   const currentIdentity = state.viewerRole === 'student'
     ? { ...currentProfile, ...state.profileDraft, ...(state.authUser || {}) }
     : currentProfile;
-  const scholarshipCatalog = scholarships;
+  const scholarshipCatalog = isSupabaseWorkspaceLoaded && state.scholarships?.length
+    ? state.scholarships
+    : scholarships;
 
   const eligibleScholarships = useMemo(() => rankScholarships(studentMatchProfile, scholarshipCatalog), [studentMatchProfile, scholarshipCatalog]);
   const filteredScholarships = useMemo(
@@ -424,17 +438,17 @@ function App() {
     });
 
     if (authResult.success || authResult.fallback) {
-      const resolvedRole = authResult.user?.user_metadata?.role || selectedRole;
-      const account = resolveAccount(resolvedRole);
       const profileResult = authResult.user?.id ? await getUserProfile(authResult.user.id) : { profile: null };
       const profile = profileResult.profile;
+      const resolvedRole = profile?.role || authResult.user?.user_metadata?.role || selectedRole;
+      const account = resolveAccount(resolvedRole);
       updateState((previous) => ({
         ...previous,
         isAuthenticated: true,
         hasLoggedInBefore: true,
         showFirstLoginWelcome: !previous.hasLoggedInBefore,
         viewerRole: account.role,
-        activeView: 'dashboard',
+        activeView: landingViewForRole(account.role),
         authUser: {
           id: authResult.user?.id || account.id,
           email: credentials.email,
@@ -453,7 +467,12 @@ function App() {
           ? { ...previous.profileDraft, degreeProgram: profile.degree_program }
           : previous.profileDraft,
       }));
-      if (authResult.user?.id && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) && !readStoredState()?.profileSkipped) {
+      const workspace = await loadSupabaseWorkspace({ role: account.role, userId: authResult.user?.id || account.id, department: profile?.department || account.department });
+      if (workspace.success) {
+        updateState((previous) => ({ ...previous, ...workspace }));
+        setIsSupabaseWorkspaceLoaded(true);
+      }
+      if (authResult.user?.id && account.role === 'student' && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) && !readStoredState()?.profileSkipped) {
         setProfileOnboarding({ id: authResult.user.id, fullName: profile?.full_name || authResult.user?.user_metadata?.full_name || account.fullName, initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || authResult.user?.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
       }
 
@@ -520,6 +539,7 @@ function App() {
       activeView: 'dashboard',
     }));
     setProfileOnboarding(null);
+    setIsSupabaseWorkspaceLoaded(false);
   };
 
   const saveAcademicProfile = async (program, studentNumber, householdIncome, qpi, hasActiveGovernmentGrant) => {
@@ -574,6 +594,14 @@ function App() {
       notes: 'Created from the scholarship explorer.',
     };
 
+    if (isSupabaseWorkspaceLoaded) createSupabaseApplication({
+      studentId: currentProfile.id,
+      scholarshipId: scholarship.id,
+      documentStatus: nextApplication.documentStatus,
+      attachedDocuments: eligibleDocs,
+      notes: nextApplication.notes,
+    });
+
     setState((previous) => ({
       ...previous,
       applications: [nextApplication, ...previous.applications],
@@ -590,6 +618,7 @@ function App() {
   };
 
   const submitApplication = (applicationId) => {
+    if (isSupabaseWorkspaceLoaded) submitSupabaseApplication(applicationId);
     setState((previous) => ({
       ...previous,
       applications: previous.applications.map((entry) => entry.id === applicationId ? {
@@ -610,6 +639,7 @@ function App() {
   };
 
   const changeApplicationStatus = (applicationId, status) => {
+    if (isSupabaseWorkspaceLoaded) updateSupabaseApplicationStatus(applicationId, status);
     setState((previous) => ({
       ...previous,
       applications: previous.applications.map((entry) => entry.id === applicationId ? {
@@ -629,6 +659,7 @@ function App() {
   };
 
   const changeDocumentStatus = (documentId, verificationStatus) => {
+    if (isSupabaseWorkspaceLoaded) updateSupabaseDocumentStatus(documentId, verificationStatus);
     setState((previous) => ({
       ...previous,
       documents: previous.documents.map((entry) => entry.id === documentId ? {
@@ -641,6 +672,7 @@ function App() {
   const deleteDocument = (documentId) => {
     const documentToDelete = state.documents.find((entry) => entry.id === documentId);
     if (!documentToDelete || !window.confirm(`Delete “${documentToDelete.title}” from your vault?`)) return;
+    if (isSupabaseWorkspaceLoaded) deleteSupabaseDocument(documentId);
     setState((previous) => ({
       ...previous,
       documents: previous.documents.filter((entry) => entry.id !== documentId),
@@ -673,6 +705,8 @@ function App() {
       uploadedAt: new Date().toISOString().slice(0, 10),
     };
 
+    if (isSupabaseWorkspaceLoaded) createSupabaseDocument({ ownerId: currentProfile.id, title, fileName, documentType });
+
     setState((previous) => ({
       ...previous,
       documents: [nextDocument, ...previous.documents],
@@ -696,6 +730,8 @@ function App() {
     const body = String(formData.get('announcementBody') || '').trim();
     if (!title || !body) return;
 
+    if (isSupabaseWorkspaceLoaded) createSupabaseAnnouncement({ title, body, audience: String(formData.get('announcementAudience') || 'Students'), createdBy: state.authUser?.id });
+
     setState((previous) => ({
       ...previous,
       announcements: [
@@ -714,6 +750,7 @@ function App() {
   };
 
   const markNotificationRead = (notificationId) => {
+    if (isSupabaseWorkspaceLoaded) markSupabaseNotificationRead(notificationId);
     setState((previous) => ({
       ...previous,
       notifications: previous.notifications.map((entry) => entry.id === notificationId ? { ...entry, status: 'Read' } : entry),
@@ -722,7 +759,6 @@ function App() {
 
   const addCustomDeadline = (title, deadline) => {
     const deadlineDate = new Date(deadline);
-    const now = new Date();
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
@@ -785,7 +821,8 @@ function App() {
   };
 
   const eligiblePreview = eligibleScholarships.slice(0, 6);
-  const departmentQueue = departmentReviews.filter((entry) => entry.department === currentProfile.department);
+  const departmentQueue = (isSupabaseWorkspaceLoaded ? state.departmentReviews : departmentReviews)
+    .filter((entry) => entry.department === currentProfile.department);
   const hasIncompleteStudentProfile = state.viewerRole === 'student' && (
     !currentIdentity.degreeProgram
     || !currentIdentity.studentNumber
@@ -893,7 +930,7 @@ function App() {
 
         <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
           {state.authUser && (
-            <div className="mr-1 inline-flex min-w-0 items-center gap-2" title={`${state.authUser.fullName} · ${roleLabels[state.viewerRole]}`}>
+            <div className="mr-1 inline-flex min-w-0 items-center gap-2 sm:hidden" title={`${state.authUser.fullName} · ${roleLabels[state.viewerRole]}`}>
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-ateneo to-sky-400 text-xs font-extrabold text-white" aria-hidden="true">{getInitials(state.authUser.fullName)}</span>
               <span className="hidden min-w-0 max-w-[12rem] leading-tight sm:grid">
                 <strong className="truncate">{state.authUser.fullName}</strong>
@@ -997,6 +1034,8 @@ function App() {
               onMarkRead={markNotificationRead}
               onShowApplications={() => navigate('applications')}
               onOpenCalendar={() => navigate('calendar')}
+              onOpenAdmin={() => navigate('admin')}
+              onOpenReview={() => navigate('review')}
               hasIncompleteProfile={hasIncompleteStudentProfile}
               onCompleteProfile={openAcademicProfile}
             />
