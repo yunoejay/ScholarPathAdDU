@@ -24,17 +24,28 @@ create table if not exists scholarships (
   origin text not null,
   coverage_type text not null,
   coverage text not null,
-  minimum_qpi numeric(3, 2) not null default 0,
-  maximum_income numeric(12, 2) not null default 0,
+  minimum_qpi numeric(3, 2),
+  maximum_income numeric(12, 2),
   eligible_degrees text[] not null default '{}'::text[],
   allows_multiple_grants boolean not null default true,
   department_scope text,
-  deadline date not null,
+  deadline date,
   is_active boolean not null default true,
   tags text[] not null default '{}'::text[],
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Unique title so seed upserts (on_conflict=title) are idempotent.
+create unique index if not exists scholarships_title_key on scholarships (title);
+
+-- Manuscript-only metadata used by the eligibility engine and UI.
+alter table scholarships add column if not exists rule_family text;
+alter table scholarships add column if not exists gov_program text;
+alter table scholarships add column if not exists is_matchable boolean not null default true;
+alter table scholarships add column if not exists application_route text;
+alter table scholarships add column if not exists is_external boolean not null default false;
+alter table scholarships add column if not exists appendix_number integer;
 
 create table if not exists documents (
   id uuid primary key default gen_random_uuid(),
