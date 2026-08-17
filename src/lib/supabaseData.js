@@ -11,6 +11,12 @@ const toScholarship = (row) => ({
   coverageType: row.coverage_type,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+  ruleFamily: row.rule_family,
+  govProgram: row.gov_program,
+  isMatchable: row.is_matchable,
+  applicationRoute: row.application_route,
+  isExternal: row.is_external,
+  appendixNumber: row.appendix_number,
 });
 
 const toDocument = (row) => ({

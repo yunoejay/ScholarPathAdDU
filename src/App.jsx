@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
-import { announcements as seedAnnouncements, applications as seedApplications, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications, scholarships } from './lib/demoData';
+import { announcements as seedAnnouncements, applications as seedApplications, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications } from './lib/demoState';
 import { getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
 import { getAcademicProgram } from './lib/academicPrograms';
 import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
@@ -386,7 +386,7 @@ function App() {
     : currentProfile;
   const scholarshipCatalog = isSupabaseWorkspaceLoaded && state.scholarships?.length
     ? state.scholarships
-    : scholarships;
+    : [];
 
   const eligibleScholarships = useMemo(() => rankScholarships(studentMatchProfile, scholarshipCatalog), [studentMatchProfile, scholarshipCatalog]);
   const filteredScholarships = useMemo(
