@@ -95,6 +95,17 @@ create table if not exists notifications (
   created_at timestamptz not null default now()
 );
 
+create table if not exists academic_programs (
+  id uuid primary key default gen_random_uuid(),
+  value text not null unique,
+  label text not null,
+  department text not null,
+  category text not null,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists department_reviews (
   id uuid primary key default gen_random_uuid(),
   application_id uuid references applications(id) on delete cascade,
@@ -117,6 +128,7 @@ alter table application_documents enable row level security;
 alter table announcements enable row level security;
 alter table notifications enable row level security;
 alter table department_reviews enable row level security;
+alter table academic_programs enable row level security;
 
 -- Role helpers are security-definer functions so RLS checks do not recurse
 -- through the profiles table. The role is still stored in profiles and is
@@ -180,6 +192,8 @@ drop policy if exists "osa_announcements_manage" on announcements;
 drop policy if exists "notifications_self_access" on notifications;
 drop policy if exists "department_reviews_restricted" on department_reviews;
 drop policy if exists "chair_department_reviews_access" on department_reviews;
+drop policy if exists "academic_programs_read_all" on academic_programs;
+drop policy if exists "osa_academic_programs_manage" on academic_programs;
 
 create policy "profiles_self_read_write" on profiles
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -233,3 +247,7 @@ for select using (auth.uid() = reviewer_id);
 create policy "chair_department_reviews_access" on department_reviews
 for all using (public.current_profile_role() = 'department_chair' and auth.uid() = reviewer_id)
 with check (public.current_profile_role() = 'department_chair' and auth.uid() = reviewer_id);
+create policy "academic_programs_read_all" on academic_programs
+for select using (true);
+create policy "osa_academic_programs_manage" on academic_programs
+for all using (public.current_profile_role() = 'osa_admin') with check (public.current_profile_role() = 'osa_admin');

@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { academicProgramCategories, academicPrograms, getAcademicProgram } from '../lib/academicPrograms';
 import logoImage from '../../pictures/logo.png';
 import { Button, FormField, ModalShell } from './ui';
 import { SelectPicker } from '../pages/LoginScreen';
 
-export default function AcademicProfileModal({ fullName, initialProgram, initialStudentNumber, initialHouseholdIncome, initialQpi, initialHasActiveGovernmentGrant, onSave, isSaving, errorMessage }) {
+export default function AcademicProfileModal({ fullName, initialProgram, initialStudentNumber, initialHouseholdIncome, initialQpi, initialHasActiveGovernmentGrant, academicPrograms = [], academicProgramCategories = [], onSave, isSaving, errorMessage }) {
   const [program, setProgram] = useState(initialProgram || '');
   const [studentNumber, setStudentNumber] = useState(initialStudentNumber || '');
   const [householdIncome, setHouseholdIncome] = useState(initialHouseholdIncome ?? '');
   const [qpi, setQpi] = useState(initialQpi ?? '');
   const [hasActiveGovernmentGrant, setHasActiveGovernmentGrant] = useState(Boolean(initialHasActiveGovernmentGrant));
   const [validationError, setValidationError] = useState('');
-  const selectedProgram = getAcademicProgram(program || academicPrograms[0].value);
+  const selectedProgram = academicPrograms.find((entry) => entry.value === program) || academicPrograms[0];
   const programOptions = academicProgramCategories.flatMap((category) => [
     { value: `group-${category}`, label: category, isGroup: true },
     ...academicPrograms.filter((option) => option.category === category),

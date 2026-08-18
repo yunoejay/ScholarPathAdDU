@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { announcements as seedAnnouncements, applications as seedApplications, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications } from './lib/demoState';
 import { getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
-import { getAcademicProgram } from './lib/academicPrograms';
+import { academicPrograms, getAcademicProgram } from './lib/academicPrograms';
 import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
-import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseDocument, deleteSupabaseDocument, loadSupabaseWorkspace, markSupabaseNotificationRead, submitSupabaseApplication, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus } from './lib/supabaseData';
+import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseDocument, deleteSupabaseDocument, loadSupabaseAcademicPrograms, loadSupabaseWorkspace, markSupabaseNotificationRead, submitSupabaseApplication, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus } from './lib/supabaseData';
 import AcademicProfileModal from './components/AcademicProfileModal';
 import { NotificationDropdown } from './components/pageParts';
 import LoginScreenPage from './pages/LoginScreen';
@@ -118,6 +118,7 @@ const createInitialState = () => {
       customDeadlines: [],
       profileSkipped: false,
       theme: 'light',
+      academicPrograms,
     };
   }
   const defaults = {
@@ -160,6 +161,7 @@ const createInitialState = () => {
     customDeadlines: [],
     profileSkipped: false,
     theme: 'light',
+    academicPrograms,
   };
 
   if (!stored) {
@@ -197,6 +199,7 @@ const createInitialState = () => {
     notifications: Array.isArray(stored.notifications) && stored.notifications.length ? stored.notifications : defaults.notifications,
     announcements: Array.isArray(stored.announcements) && stored.announcements.length ? stored.announcements : defaults.announcements,
     customDeadlines: Array.isArray(stored.customDeadlines) ? stored.customDeadlines : defaults.customDeadlines,
+    academicPrograms: Array.isArray(stored.academicPrograms) && stored.academicPrograms.length ? stored.academicPrograms : defaults.academicPrograms,
     profileSkipped: stored.profileSkipped ?? defaults.profileSkipped,
   };
 };
@@ -346,6 +349,12 @@ function App() {
         updateState((previous) => ({ ...previous, ...workspace }));
         setIsSupabaseWorkspaceLoaded(true);
       }
+      if (active) {
+        const academicProgramsResult = await loadSupabaseAcademicPrograms();
+        if (academicProgramsResult.success && academicProgramsResult.academicPrograms?.length) {
+          updateState((previous) => ({ ...previous, academicPrograms: academicProgramsResult.academicPrograms }));
+        }
+      }
       if (userRole === 'student' && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null)) {
         if (readStoredState()?.profileSkipped) return;
         setProfileOnboarding({ id: user.id, fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Signed in user', initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || user.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
@@ -384,6 +393,8 @@ function App() {
   const currentIdentity = state.viewerRole === 'student'
     ? { ...currentProfile, ...state.profileDraft, ...(state.authUser || {}) }
     : currentProfile;
+  const activeAcademicPrograms = state.academicPrograms?.length ? state.academicPrograms : academicPrograms;
+  const activeAcademicProgramCategories = [...new Set(activeAcademicPrograms.map((program) => program.category))];
   const scholarshipCatalog = isSupabaseWorkspaceLoaded && state.scholarships?.length
     ? state.scholarships
     : [];
@@ -471,6 +482,10 @@ function App() {
       if (workspace.success) {
         updateState((previous) => ({ ...previous, ...workspace }));
         setIsSupabaseWorkspaceLoaded(true);
+      }
+      const academicProgramsResult = await loadSupabaseAcademicPrograms();
+      if (academicProgramsResult.success && academicProgramsResult.academicPrograms?.length) {
+        updateState((previous) => ({ ...previous, academicPrograms: academicProgramsResult.academicPrograms }));
       }
       if (authResult.user?.id && account.role === 'student' && (!profile?.degree_program || !profile?.student_number || profile?.qpi == null || profile?.household_income == null) && !readStoredState()?.profileSkipped) {
         setProfileOnboarding({ id: authResult.user.id, fullName: profile?.full_name || authResult.user?.user_metadata?.full_name || account.fullName, initialProgram: profile?.degree_program || '', initialStudentNumber: profile?.student_number || authResult.user?.user_metadata?.student_id || '', initialQpi: profile?.qpi ?? '', initialHouseholdIncome: profile?.household_income ?? '', initialHasActiveGovernmentGrant: profile?.has_active_government_grant ?? false });
@@ -791,9 +806,10 @@ function App() {
   };
 
   const saveEligibilityProfile = async (profile) => {
+    const selectedProgram = activeAcademicPrograms.find((program) => program.value === profile.degreeProgram) || getAcademicProgram(profile.degreeProgram);
     const profileUpdate = {
       degreeProgram: profile.degreeProgram,
-      department: getAcademicProgram(profile.degreeProgram).department,
+      department: selectedProgram.department,
       studentNumber: state.authUser?.studentNumber || currentProfile.studentNumber,
       householdIncome: profile.householdIncome,
       qpi: profile.qpi,
@@ -915,6 +931,8 @@ function App() {
           initialHouseholdIncome={profileOnboarding.initialHouseholdIncome}
           initialQpi={profileOnboarding.initialQpi}
           initialHasActiveGovernmentGrant={profileOnboarding.initialHasActiveGovernmentGrant}
+          academicPrograms={activeAcademicPrograms}
+          academicProgramCategories={activeAcademicProgramCategories}
           onSave={saveAcademicProfile}
           isSaving={isSavingProfile}
           errorMessage={profileSaveError}
@@ -1055,6 +1073,8 @@ function App() {
 
           {state.activeView === 'eligibility' && (
             <EligibilityCheckerPage
+              academicPrograms={activeAcademicPrograms}
+              academicProgramCategories={activeAcademicProgramCategories}
               profileDraft={state.profileDraft}
               scholarships={scholarshipCatalog}
               onApply={applyToScholarship}

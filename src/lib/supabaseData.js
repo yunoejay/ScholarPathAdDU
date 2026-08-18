@@ -41,6 +41,14 @@ const toApplication = (row, scholarshipById, documentIdsByApplication) => ({
   attachedDocuments: documentIdsByApplication[row.id] || [],
 });
 
+const toAcademicProgram = (row) => ({
+  id: row.id,
+  value: row.value,
+  label: row.label,
+  department: row.department,
+  category: row.category,
+});
+
 const toAnnouncement = (row) => ({ ...row, createdAt: row.created_at });
 const toNotification = (row) => ({ ...row, profileId: row.profile_id, createdAt: row.created_at });
 const toDepartmentReview = (row) => ({
@@ -91,6 +99,19 @@ export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
     announcements: (announcementsResult.data || []).map(toAnnouncement),
     notifications: (notificationsResult.data || []).map(toNotification),
     departmentReviews: (reviewsResult.data || []).map(toDepartmentReview),
+  };
+};
+
+export const loadSupabaseAcademicPrograms = async () => {
+  if (!ensureReady()) return { success: false, fallback: true };
+
+  const result = await supabase.from('academic_programs').select('*').order('sort_order', { ascending: true });
+  if (result.error) return { success: false, fallback: false, message: result.error.message };
+
+  return {
+    success: true,
+    fallback: false,
+    academicPrograms: (result.data || []).map(toAcademicProgram),
   };
 };
 

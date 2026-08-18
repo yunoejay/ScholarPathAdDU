@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
-import { academicProgramCategories, academicPrograms } from '../lib/academicPrograms';
 import { rankScholarships } from '../lib/eligibility';
 import { Card, EmptyState, ScholarshipRow } from '../components/pageParts';
 import { SelectPicker } from './LoginScreen';
 
-export default function EligibilityChecker({ profileDraft, scholarships, onApply, onSaveProfile }) {
+export default function EligibilityChecker({ profileDraft, scholarships, onApply, onSaveProfile, academicPrograms = [], academicProgramCategories = [] }) {
   const [result, setResult] = useState([]);
   const [editableProfile, setEditableProfile] = useState(profileDraft);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
