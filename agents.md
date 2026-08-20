@@ -85,7 +85,7 @@ The present implementation is organized as follows:
   - `CalendarView.jsx`
   - `SettingsView.jsx`
 - `src/components/` contains shared UI building blocks, modal/page-part helpers, notification cards, announcements, and the `NotificationDropdown` center.
-- `src/lib/` contains the domain logic, formatting helpers, authentication helpers, eligibility rules, demo data, backend-status helpers, academic-program taxonomy, and Supabase setup.
+- `src/lib/` contains the domain logic, formatting helpers, authentication helpers, eligibility rules, demo state, backend-status helpers, academic-program taxonomy, and Supabase setup. The scholarship catalog is read from the Supabase `scholarships` table via `src/lib/supabaseData.js`; offline demo state (demo users, applications, documents, notifications, announcements, and department reviews) lives in `src/lib/demoState.js`; and academic programs are loaded from the Supabase `academic_programs` table via `loadSupabaseAcademicPrograms()` (in `src/lib/supabaseData.js`), with `src/lib/academicPrograms.js` (value/label/department/category) as the offline fallback.
 - `supabase/schema.sql` is the reference schema for backend-aligned work.
 - `src/tailwind.css` is the primary Tailwind entry point and contains the shared theme primitives.
 - `src/styles.css` contains component-specific CSS, browser behavior, pseudo-elements, keyframes, and rules that are not practical as utilities.
@@ -153,7 +153,8 @@ Match the existing design direction unless a task explicitly calls for redesign:
 Use the existing local shapes and patterns already established in the app:
 
 
-- Demo data should remain compatible with `src/lib/demoData.js`.
+- Demo state should remain compatible with `src/lib/demoState.js`; the scholarship catalog is read from the Supabase `scholarships` table (including the manuscript-only columns `rule_family`, `gov_program`, `is_matchable`, `application_route`, `is_external`, and `appendix_number`) and falls back to an empty catalog when the Supabase workspace is not loaded.
+- Academic programs should remain consistent with `src/lib/academicPrograms.js` and load from the Supabase `academic_programs` table via `loadSupabaseAcademicPrograms()` when the Supabase workspace is configured, falling back to the static file otherwise.
 - Eligibility logic should remain consistent with `src/lib/eligibility.js`.
 - Supabase configuration should continue to route through `src/lib/supabaseClient.js`.
 - New persisted state should be additive and guarded so old localStorage entries do not break the app.
