@@ -251,3 +251,51 @@ create policy "academic_programs_read_all" on academic_programs
 for select using (true);
 create policy "osa_academic_programs_manage" on academic_programs
 for all using (public.current_profile_role() = 'osa_admin') with check (public.current_profile_role() = 'osa_admin');
+
+-- ---------------------------------------------------------------------------
+-- Server-side deadline reminder delivery log.
+--
+-- One row per delivered reminder (source_key = `deadline-reminder-<id>-<days>`
+-- scoped to a user). Used by the process-deadline-reminders Edge Function to
+-- guarantee each reminder is delivered at most once, regardless of how often
+-- the scheduled job runs. Written only via the service role.
+-- ---------------------------------------------------------------------------
+create table if not exists notification_email_log (
+  id uuid primary key default gen_random_uuid(),
+  source_key text not null,
+  user_id uuid not null,
+  reminder_title text,
+  delivered_at timestamptz not null default now(),
+  unique (source_key, user_id)
+);
+
+alter table notification_email_log enable row level security;
+
+create policy "notification_email_log_self_read" on notification_email_log
+for select using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Scheduled trigger for process-deadline-reminders (pg_cron + pg_net).
+--
+-- Requires the pg_cron and pg_net extensions (available on Supabase projects;
+-- enable them from the dashboard if not already active). Runs daily at
+-- 07:00 Asia/Manila. The function URL below must be replaced with the
+-- deployed project ref before enabling the schedule.
+-- ---------------------------------------------------------------------------
+-- create extension if not exists pg_cron;
+-- create extension if not exists pg_net;
+--
+-- select cron.schedule(
+--   'process-deadline-reminders-daily',
+--   '0 23 * * *',  -- 07:00 PHT (UTC+8)
+--   $$
+--   select net.http_post(
+--     url := 'https://<project-ref>.supabase.co/functions/v1/process-deadline-reminders',
+--     headers := jsonb_build_object(
+--       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+--     ),
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );
+
