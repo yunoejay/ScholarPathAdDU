@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
-import { announcements as seedAnnouncements, applications as seedApplications, demoUsers, departmentReviews, documents as seedDocuments, notifications as seedNotifications } from './lib/demoState';
+import { createInitialState, demoUsers, departmentReviews, readStoredState, storageKey } from './lib/demoState';
+import { mergeNotifications } from './lib/notificationMerge';
 import { getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
 import { academicPrograms, getAcademicProgram } from './lib/academicPrograms';
 import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
@@ -19,7 +20,6 @@ import CalendarViewPage from './pages/CalendarView';
 import SettingsViewPage from './pages/SettingsView';
 import logoImage from '../pictures/logo.png';
 
-const storageKey = 'scholarpath-addu-demo-state';
 const roleLabels = {
   student: 'Student',
   osa_admin: 'OSA Admin',
@@ -56,153 +56,6 @@ const prependInAppNotification = (previous, notification) => (
     ? [notification, ...previous.notifications]
     : previous.notifications
 );
-
-const readStoredState = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const createInitialState = () => {
-  const stored = readStoredState();
-  // Force reset old dark theme by clearing stored state entirely if it has old theme
-  if (stored && stored.theme === 'dark') {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(storageKey);
-    }
-    // Return fresh defaults with light theme
-    return {
-      isAuthenticated: false,
-      hasLoggedInBefore: false,
-      showFirstLoginWelcome: false,
-      authUser: null,
-      rememberMe: false,
-      savedEmail: null,
-      savedRole: 'student',
-      viewerRole: 'student',
-      activeView: 'dashboard',
-      searchQuery: '',
-      filters: {
-        category: 'all',
-        coverage: 'all',
-        deadline: 'all',
-        activeOnly: true,
-      },
-      profileDraft: {
-        qpi: 2.86,
-        householdIncome: 240000,
-        degreeProgram: 'BS Computer Science',
-        hasActiveGovernmentGrant: false,
-      },
-      notificationPreferences: {
-        smsEnabled: true,
-        emailEnabled: true,
-        inAppEnabled: true,
-        deadlineReminders: {
-          oneWeekBefore: true,
-          threeDaysBefore: true,
-          dayBefore: true,
-        },
-      },
-      applications: seedApplications,
-      documents: seedDocuments,
-      notifications: seedNotifications,
-      announcements: seedAnnouncements,
-      customDeadlines: [],
-      profileSkipped: false,
-      theme: 'light',
-      academicPrograms,
-    };
-  }
-  const defaults = {
-    isAuthenticated: false,
-    hasLoggedInBefore: false,
-    showFirstLoginWelcome: false,
-    authUser: null,
-    rememberMe: false,
-    savedEmail: null,
-    savedRole: 'student',
-    viewerRole: 'student',
-    activeView: 'dashboard',
-    searchQuery: '',
-    filters: {
-      category: 'all',
-      coverage: 'all',
-      deadline: 'all',
-      activeOnly: true,
-    },
-    profileDraft: {
-      qpi: 2.86,
-      householdIncome: 240000,
-      degreeProgram: 'BS Computer Science',
-      hasActiveGovernmentGrant: false,
-    },
-    notificationPreferences: {
-      smsEnabled: true,
-      emailEnabled: true,
-      inAppEnabled: true,
-      deadlineReminders: {
-        oneWeekBefore: true,
-        threeDaysBefore: true,
-        dayBefore: true,
-      },
-    },
-    applications: seedApplications,
-    documents: seedDocuments,
-    notifications: seedNotifications,
-    announcements: seedAnnouncements,
-    customDeadlines: [],
-    profileSkipped: false,
-    theme: 'light',
-    academicPrograms,
-  };
-
-  if (!stored) {
-    return defaults;
-  }
-
-  return {
-    ...defaults,
-    ...stored,
-    theme: stored.theme ?? 'light',
-    authUser: stored.authUser ?? defaults.authUser,
-    hasLoggedInBefore: stored.hasLoggedInBefore ?? defaults.hasLoggedInBefore,
-    showFirstLoginWelcome: stored.showFirstLoginWelcome ?? defaults.showFirstLoginWelcome,
-    rememberMe: stored.rememberMe ?? defaults.rememberMe,
-    savedEmail: stored.savedEmail ?? defaults.savedEmail,
-    savedRole: stored.savedRole ?? defaults.savedRole,
-    filters: {
-      ...defaults.filters,
-      ...(stored.filters ?? {}),
-    },
-    profileDraft: {
-      ...defaults.profileDraft,
-      ...(stored.profileDraft ?? {}),
-    },
-    notificationPreferences: {
-      ...defaults.notificationPreferences,
-      ...(stored.notificationPreferences ?? {}),
-      deadlineReminders: {
-        ...defaults.notificationPreferences.deadlineReminders,
-        ...(stored.notificationPreferences?.deadlineReminders ?? {}),
-      },
-    },
-    applications: Array.isArray(stored.applications) && stored.applications.length ? stored.applications : defaults.applications,
-    documents: Array.isArray(stored.documents) && stored.documents.length ? stored.documents : defaults.documents,
-    notifications: Array.isArray(stored.notifications) && stored.notifications.length ? stored.notifications : defaults.notifications,
-    announcements: Array.isArray(stored.announcements) && stored.announcements.length ? stored.announcements : defaults.announcements,
-    customDeadlines: Array.isArray(stored.customDeadlines) ? stored.customDeadlines : defaults.customDeadlines,
-    academicPrograms: Array.isArray(stored.academicPrograms) && stored.academicPrograms.length ? stored.academicPrograms : defaults.academicPrograms,
-    profileSkipped: stored.profileSkipped ?? defaults.profileSkipped,
-  };
-};
 
 function App() {
   const [state, setState] = useState(createInitialState);
@@ -247,7 +100,7 @@ function App() {
 
     const syncDeadlineReminders = () => {
       setState((previous) => {
-        if (!previous.notificationPreferences?.inAppEnabled || !previous.customDeadlines.length) {
+        if (!previous.notificationPreferences?.inAppEnabled || !previous.customDeadlines?.length) {
           return previous;
         }
 
@@ -258,7 +111,7 @@ function App() {
           { key: 'dayBefore', daysBefore: 1 },
         ];
         const existingReminderKeys = new Set(
-          previous.notifications.map((notification) => notification.sourceKey).filter(Boolean),
+          (previous.notifications ?? []).map((notification) => notification.sourceKey).filter(Boolean),
         );
         const dueReminders = [];
 
@@ -289,7 +142,7 @@ function App() {
         });
 
         return dueReminders.length
-          ? { ...previous, notifications: [...dueReminders, ...previous.notifications] }
+          ? { ...previous, notifications: [...dueReminders, ...(previous.notifications ?? [])] }
           : previous;
       });
     };
@@ -346,7 +199,14 @@ function App() {
       }));
       const workspace = await loadSupabaseWorkspace({ role: userRole, userId: user.id, department: profile?.department || '' });
       if (active && workspace.success) {
-        updateState((previous) => ({ ...previous, ...workspace }));
+        updateState((previous) => ({
+          ...previous,
+          ...workspace,
+          // The Supabase workspace is authoritative for server-backed notifications,
+          // but locally generated deadline reminders only exist in localStorage.
+          // Merge instead of replacing so hydrated sessions cannot wipe them.
+          notifications: mergeNotifications(previous.notifications, workspace.notifications),
+        }));
         setIsSupabaseWorkspaceLoaded(true);
       }
       if (active) {

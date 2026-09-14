@@ -1,3 +1,6 @@
+import { academicPrograms } from './academicPrograms';
+
+
 const today = new Date();
 const dateFromToday = (days) => {
   const date = new Date(today);
@@ -196,3 +199,116 @@ export const departmentReviews = [
     recommendation: 'Submitted to OSA for final approval.',
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Persisted demo-state hydration.
+//
+// Moved out of src/App.jsx so the localStorage merge rules can be unit tested.
+// NOTE: an earlier version of createInitialState deleted the entire saved
+// session whenever `stored.theme === 'dark'` ("force reset old dark theme"),
+// which also destroyed customDeadlines and generated reminder notifications
+// every reload for anyone using the dark theme. The stored theme is now
+// preserved (see the theme requirement in agents.md) and the saved data is
+// never discarded.
+// ---------------------------------------------------------------------------
+export const storageKey = 'scholarpath-addu-demo-state';
+
+export const readStoredState = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const createDefaultState = () => ({
+  isAuthenticated: false,
+  hasLoggedInBefore: false,
+  showFirstLoginWelcome: false,
+  authUser: null,
+  rememberMe: false,
+  savedEmail: null,
+  savedRole: 'student',
+  viewerRole: 'student',
+  activeView: 'dashboard',
+  searchQuery: '',
+  filters: {
+    category: 'all',
+    coverage: 'all',
+    deadline: 'all',
+    activeOnly: true,
+  },
+  profileDraft: {
+    qpi: 2.86,
+    householdIncome: 240000,
+    degreeProgram: 'BS Computer Science',
+    hasActiveGovernmentGrant: false,
+  },
+  notificationPreferences: {
+    smsEnabled: true,
+    emailEnabled: true,
+    inAppEnabled: true,
+    deadlineReminders: {
+      oneWeekBefore: true,
+      threeDaysBefore: true,
+      dayBefore: true,
+    },
+  },
+  applications,
+  documents,
+  notifications,
+  announcements,
+  customDeadlines: [],
+  profileSkipped: false,
+  theme: 'light',
+  academicPrograms,
+});
+
+export const createInitialState = () => {
+  const stored = readStoredState();
+  const defaults = createDefaultState();
+
+  if (!stored) {
+    return defaults;
+  }
+
+  return {
+    ...defaults,
+    ...stored,
+    theme: stored.theme ?? 'light',
+    authUser: stored.authUser ?? defaults.authUser,
+    hasLoggedInBefore: stored.hasLoggedInBefore ?? defaults.hasLoggedInBefore,
+    showFirstLoginWelcome: stored.showFirstLoginWelcome ?? defaults.showFirstLoginWelcome,
+    rememberMe: stored.rememberMe ?? defaults.rememberMe,
+    savedEmail: stored.savedEmail ?? defaults.savedEmail,
+    savedRole: stored.savedRole ?? defaults.savedRole,
+    filters: {
+      ...defaults.filters,
+      ...(stored.filters ?? {}),
+    },
+    profileDraft: {
+      ...defaults.profileDraft,
+      ...(stored.profileDraft ?? {}),
+    },
+    notificationPreferences: {
+      ...defaults.notificationPreferences,
+      ...(stored.notificationPreferences ?? {}),
+      deadlineReminders: {
+        ...defaults.notificationPreferences.deadlineReminders,
+        ...(stored.notificationPreferences?.deadlineReminders ?? {}),
+      },
+    },
+    applications: Array.isArray(stored.applications) && stored.applications.length ? stored.applications : defaults.applications,
+    documents: Array.isArray(stored.documents) && stored.documents.length ? stored.documents : defaults.documents,
+    notifications: Array.isArray(stored.notifications) && stored.notifications.length ? stored.notifications : defaults.notifications,
+    announcements: Array.isArray(stored.announcements) && stored.announcements.length ? stored.announcements : defaults.announcements,
+    customDeadlines: Array.isArray(stored.customDeadlines) ? stored.customDeadlines : defaults.customDeadlines,
+    academicPrograms: Array.isArray(stored.academicPrograms) && stored.academicPrograms.length ? stored.academicPrograms : defaults.academicPrograms,
+    profileSkipped: stored.profileSkipped ?? defaults.profileSkipped,
+  };
+};
