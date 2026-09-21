@@ -12,6 +12,41 @@ const roleOptions = [
   { value: 'department_chair', label: 'Department Chair' },
 ];
 
+// Supabase Auth reports Google sign-in failures through the return URL instead
+// of throwing, so the login screen inspects the query string and hash for the
+// redirect error payload (GoTrue adds `sb` plus `error`/`error_code`/
+// `error_description`) and surfaces a readable message instead of failing
+// silently.
+const readAuthRedirectError = () => {
+  if (typeof window === 'undefined') return null;
+
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const queryParams = new URLSearchParams(window.location.search);
+  const readParam = (key) => hashParams.get(key) || queryParams.get(key) || '';
+
+  const error = readParam('error');
+  const errorCode = readParam('error_code');
+  if (!error && !errorCode && !hashParams.has('sb')) return null;
+
+  const description = readParam('error_description').slice(0, 160);
+  const message = error === 'access_denied' || errorCode === 'access_denied'
+    ? 'Google sign-in was cancelled or this account is not permitted to sign in.'
+    : 'Google sign-in could not be completed. Please try again or use email sign-in.';
+
+  return { message: description ? `${message} (${description})` : message };
+};
+
+// Reusable so a handled redirect error does not stay in the address bar and
+// resurface on the next reload. Successful hash tokens are left untouched.
+const clearAuthRedirectParams = () => {
+  if (typeof window === 'undefined' || !window.history?.replaceState) return;
+
+  const params = new URLSearchParams(window.location.search);
+  ['error', 'error_code', 'error_description'].forEach((key) => params.delete(key));
+  const query = params.toString();
+  window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+};
+
 function RolePicker({ label, value, onChange, idPrefix }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -239,6 +274,15 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
     verificationCode: '',
   });
   const [createAccountSuccess, setCreateAccountSuccess] = useState(false);
+
+  useEffect(() => {
+    const redirectError = readAuthRedirectError();
+    if (!redirectError) return;
+
+    setFeedbackMessage(redirectError.message);
+    setFeedbackTone('error');
+    clearAuthRedirectParams();
+  }, []);
 
   const submitLogin = async (event) => {
     event.preventDefault();

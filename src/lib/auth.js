@@ -15,6 +15,25 @@ const getAuthErrorMessage = (error, fallbackMessage) => {
   }
 };
 
+// Supabase Auth only returns the browser to a URL that its dashboard has
+// allow-listed (Authentication -> URL Configuration). When the requested
+// redirect is not allow-listed, the Supabase Auth server silently substitutes
+// its configured Site URL, which is often still `http://localhost:3000` for a
+// prototype project. Prefer an explicit canonical site URL when one is
+// configured for the deployed build, and otherwise fall back to the origin the
+// prototype is currently served from, including the Vite base path.
+export const getAuthRedirectUrl = () => {
+  if (typeof window === 'undefined') return undefined;
+
+  const configuredSiteUrl = import.meta.env.VITE_SITE_URL?.trim();
+  if (configuredSiteUrl) {
+    return configuredSiteUrl.endsWith('/') ? configuredSiteUrl : `${configuredSiteUrl}/`;
+  }
+
+  const basePath = import.meta.env.BASE_URL || '/';
+  return `${window.location.origin}${basePath.startsWith('/') ? basePath : `/${basePath}`}`;
+};
+
 export const signInWithEmailPassword = async ({ email, password }) => {
   if (!hasSupabaseConfig || !supabase) {
     return {
@@ -59,6 +78,9 @@ export const signUpWithEmailPassword = async ({ email, password, fullName, role,
           role,
           student_id: studentId?.trim() || null,
         },
+        // Confirmation emails return to the canonical site URL instead of the
+        // Supabase project's default Site URL.
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
 
@@ -87,7 +109,7 @@ export const resetPasswordForEmail = async ({ email }) => {
     };
   }
 
-  const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+  const redirectTo = getAuthRedirectUrl();
   let error;
   try {
     ({ error } = await supabase.auth.resetPasswordForEmail(email.trim(), redirectTo ? { redirectTo } : undefined));
@@ -247,7 +269,7 @@ export const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: getAuthRedirectUrl(),
         queryParams: {
           hd: 'addu.edu.ph',
           prompt: 'select_account',
