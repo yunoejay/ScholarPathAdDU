@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CalendarPlus, PartyPopper, X } from 'lucide-react';
 import { fmtDate } from '../lib/formatters';
 
+const daysLeftLabel = (value) => {
+  if (value < 0) return 'Closed';
+  if (value === 0) return 'Due today';
+  if (value === 1) return '1 day';
+  return `${value} days`;
+};
+
 export default function CalendarView({ scholarships, customDeadlines = [], onAddCustomDeadline, onDeleteCustomDeadline }) {
   const now = new Date();
   const todayInputValue = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -96,9 +103,12 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
   return (
     <div className="grid gap-4">
       <section className="page-title-bar rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-        <div className="page-title-copy"> 
+        <div className="page-title-copy">
+          <span className="page-section-label">Deadline calendar</span>
+          <h2>Scholarship deadlines and personal reminders</h2>
+          <p className="mt-2 max-w-2xl text-sm text-app-muted">Track scholarship deadlines alongside your own document and essay reminders.</p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <div className="calendar-grid">
             <div className="calendar-nav">
               <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-app-border bg-app-surface text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={handlePrevMonth} aria-label="Previous month"><ArrowLeft size={18} /></button>
@@ -154,7 +164,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
                           <strong>{scholarship.title}</strong>
                           <p>{fmtDate(scholarship.deadline)}</p>
                         </div>
-                        <span className="days-left">{daysUntil} days</span>
+                        <span className="days-left">{daysLeftLabel(daysUntil)}</span>
                       </div>
                     );
                   })}
@@ -168,7 +178,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
                           <p>{fmtDate(customDeadline.deadline)}</p>
                         </div>
                         <div className="deadline-actions">
-                          <span className="days-left">{daysUntil} days</span>
+                          <span className="days-left">{daysLeftLabel(daysUntil)}</span>
                           <button
                             type="button"
                             className="delete-deadline-btn"
@@ -197,7 +207,7 @@ export default function CalendarView({ scholarships, customDeadlines = [], onAdd
                           <strong>{scholarship.title}</strong>
                           <p>{fmtDate(scholarship.deadline)}</p>
                         </div>
-                        <span className="days-left">{daysUntil} days</span>
+                        <span className="days-left">{daysLeftLabel(daysUntil)}</span>
                       </div>
                     );
                   })}

@@ -1,4 +1,4 @@
-import { Card, EmptyState } from '../components/pageParts';
+import { EmptyState } from '../components/pageParts';
 import { fmtCurrency, fmtDate } from '../lib/formatters';
 import { coverageTypes } from '../lib/constants';
 import { getDeadlineStatus } from '../lib/eligibility';

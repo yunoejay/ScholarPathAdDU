@@ -1,16 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Check, ChevronDown, Eye, EyeOff, LoaderCircle, Moon, Search, Sun, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, Eye, EyeOff, LoaderCircle, Moon, Search, Sun } from 'lucide-react';
 import bgImage from '../../pictures/picture1.png';
 import logoImage from '../../pictures/logo.png';
 import { signInWithGoogle } from '../lib/auth';
 import { ModalShell } from '../components/ui';
 
-const roleOptions = [
-  { value: 'student', label: 'Student' },
-  { value: 'osa_admin', label: 'OSA Admin' },
-  { value: 'department_chair', label: 'Department Chair' },
-];
 
 // Supabase Auth reports Google sign-in failures through the return URL instead
 // of throwing, so the login screen inspects the query string and hash for the
@@ -46,138 +41,6 @@ const clearAuthRedirectParams = () => {
   const query = params.toString();
   window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
 };
-
-function RolePicker({ label, value, onChange, idPrefix }) {
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const pickerRef = useRef(null);
-
-  useEffect(() => {
-    if (open) {
-      const currentIndex = roleOptions.findIndex((option) => option.value === value);
-      setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
-    }
-  }, [open, value]);
-
-  useEffect(() => {
-    const handlePointerDown = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  const selectedOption = roleOptions.find((option) => option.value === value) ?? roleOptions[0];
-
-  const chooseRole = (nextValue) => {
-    onChange(nextValue);
-    setOpen(false);
-  };
-
-  const handleKeyDown = (event) => {
-    if (!open && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
-      event.preventDefault();
-      setOpen(true);
-      return;
-    }
-
-    if (!open) {
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      setOpen(false);
-      return;
-    }
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setActiveIndex((previous) => (previous + 1) % roleOptions.length);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setActiveIndex((previous) => (previous - 1 + roleOptions.length) % roleOptions.length);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      setActiveIndex(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      setActiveIndex(roleOptions.length - 1);
-      return;
-    }
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      chooseRole(roleOptions[activeIndex].value);
-    }
-  };
-
-  return (
-    <div className="relative grid gap-2" ref={pickerRef} onKeyDown={handleKeyDown}>
-      <span className="text-sm font-semibold text-app-text">{label}</span>
-      <button
-        type="button"
-        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-control border border-app-border bg-app-surface px-4 py-3 text-left text-app-text shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20"
-        onClick={() => setOpen((previous) => !previous)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={`${idPrefix}-role-list`}
-      >
-        <span className="min-w-0 truncate text-sm font-semibold">{selectedOption.label}</span>
-        <ChevronDown className="h-5 w-5 shrink-0 text-app-muted" size={18} aria-hidden="true" />
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[18] border-0 bg-slate-950/5"
-            aria-label={`Close ${label.toLowerCase()} menu`}
-            onClick={() => setOpen(false)}
-            tabIndex={-1}
-          />
-          <div className="role-picker-menu role-picker-menu--open" id={`${idPrefix}-role-list`} role="listbox" aria-label={label}>
-          {roleOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={value === option.value}
-              className={`flex w-full items-center rounded-xl px-3 py-3 text-left text-sm text-app-text transition hover:bg-blue-500/10 focus:outline-none focus:ring-4 focus:ring-blue-500/20 ${value === option.value || roleOptions[activeIndex].value === option.value ? 'bg-blue-500/10' : ''}`}
-              onClick={() => chooseRole(option.value)}
-            >
-              <strong>{option.label}</strong>
-            </button>
-          ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 function SelectPicker({ label, value, onChange, options, idPrefix }) {
   const [open, setOpen] = useState(false);
@@ -271,7 +134,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
     confirmPassword: '',
     role: 'student',
     studentId: '',
-    verificationCode: '',
   });
   const [createAccountSuccess, setCreateAccountSuccess] = useState(false);
 
@@ -332,10 +194,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
       password: createAccountData.password,
       role: createAccountData.role,
       studentId: createAccountData.studentId,
-      verificationCode: createAccountData.verificationCode,
     });
-
-    console.log('handleCreateAccount - result:', result);
 
     if (result?.success) {
       setCreateAccountSuccess(true);
@@ -351,7 +210,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
           confirmPassword: '',
           role: 'student',
           studentId: '',
-          verificationCode: '',
         });
         setFeedbackMessage('');
         setFeedbackTone('info');
@@ -360,7 +218,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
     }
 
     const errorMsg = result?.message || 'Unable to create your account right now.';
-    console.error('handleCreateAccount - error:', errorMsg);
     setFeedbackMessage(errorMsg);
     setFeedbackTone('error');
   };
@@ -474,7 +331,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
               </div>
             )}
             <button className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-br from-ateneo-strong via-ateneo to-ateneo-bright px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 full-width" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {isSubmitting ? 'Signing inâ¦' : 'Sign in'}
             </button>
              <div className="flex items-center gap-3 text-sm text-app-muted before:h-px before:flex-1 before:bg-app-border after:h-px after:flex-1 after:bg-app-border">
                <span>or</span>
@@ -545,7 +402,6 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
                   confirmPassword: '',
                   role: 'student',
                   studentId: '',
-                  verificationCode: '',
                 });
               }}>Back to sign in</button>
             </div>
@@ -622,7 +478,7 @@ export default function LoginScreen({ onLogin, onSignUp, onForgotPassword, remem
         <div className="modal-overlay" onClick={() => setShowForgotPassword(false)}>
           <div className="w-full max-w-[420px] rounded-app border border-app-border bg-app-card p-5 shadow-app backdrop-blur" onClick={(e) => e.stopPropagation()}>
             <h2 className="m-0 text-2xl font-bold text-app-text">Reset your password</h2>
-            <p className="mt-2 text-sm text-app-muted">Enter your email address and we'll send you a password reset link.</p>
+            <p className="mt-2 text-sm text-app-muted">Enter your email address and we’ll send you a password reset link.</p>
             {feedbackMessage && (
               <div className={`feedback-banner w-full rounded-xl border px-3 py-3 text-sm ${feedbackTone === 'error' ? 'feedback-banner--error border-rose-400/30 bg-rose-500/10 text-rose-200' : feedbackTone === 'success' ? 'feedback-banner--success border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'feedback-banner--info border-sky-400/30 bg-sky-500/10 text-sky-200'}`} role="status">
                 {feedbackMessage}

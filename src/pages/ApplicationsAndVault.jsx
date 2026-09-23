@@ -18,7 +18,7 @@ export default function ApplicationsAndVault({ applications, documents, scholars
   const downloadApplicationPDF = (application) => {
     const scholarship = scholarships.find((item) => item.id === application.scholarshipId);
     const content = `
-SCHOLARSHIP APPLICATION - EXPORT
+SCHOLARPATH ADDU — APPLICATION REPORT
 ==================================
 Application ID: ${application.id}
 Scholarship: ${application.scholarshipTitle}
@@ -72,7 +72,7 @@ Exported from ScholarPath AdDU
                     <button className="inline-flex min-h-10 items-center justify-center rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => onSubmit(entry.id)}>Submit now</button>
                     <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-app-border bg-app-surface px-4 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-px focus:outline-none focus:ring-4 focus:ring-blue-500/20" onClick={() => downloadApplicationPDF(entry)}>
                       <Download size={16} aria-hidden="true" />
-                      Export PDF
+                      Export report
                     </button>
                   </div>
                 </article>

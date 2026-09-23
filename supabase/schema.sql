@@ -17,6 +17,20 @@ create table if not exists profiles (
 );
 alter table profiles add column if not exists student_number text;
 
+-- Standard Procedure stage records (endorsement, interview, deliberation,
+-- release) and the event timeline live on applications as JSON payloads.
+alter table applications add column if not exists endorsement jsonb;
+alter table applications add column if not exists interview jsonb;
+alter table applications add column if not exists deliberation jsonb;
+alter table applications add column if not exists release jsonb;
+alter table applications add column if not exists timeline jsonb not null default '[]'::jsonb;
+
+-- Widen the application status check to cover the SOP stage sequence
+-- (Endorsed, Interview, Recommended, Released) additively.
+alter table applications drop constraint if exists applications_status_check;
+alter table applications add constraint applications_status_check
+  check (status in ('Draft', 'Submitted', 'Under Review', 'For Verification', 'Endorsed', 'Interview', 'Recommended', 'Approved', 'Released', 'Rejected'));
+
 create table if not exists scholarships (
   id uuid primary key default gen_random_uuid(),
   title text not null,

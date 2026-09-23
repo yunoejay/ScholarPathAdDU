@@ -46,7 +46,11 @@ export default function SettingsView({ notificationPreferences, onUpdatePreferen
   return (
     <div className="grid gap-4">
       <section className="page-title-bar rounded-app border bg-app-card p-5 shadow-app backdrop-blur">
-        <h2 className="mt-2 text-xl font-bold text-app-text">Notification center settings</h2>
+        <div className="page-title-copy">
+          <span className="page-section-label">Settings</span>
+          <h2>Notification center settings</h2>
+          <p className="mt-2 max-w-2xl text-sm text-app-muted">Choose how ScholarPath reaches you and when deadline reminders should arrive.</p>
+        </div>
 
         <div className="mt-8 border-t border-app-border pt-6">
           <h3 className="m-0 text-lg font-semibold text-app-text">Notification Channels</h3>

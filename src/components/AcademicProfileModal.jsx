@@ -62,8 +62,8 @@ export default function AcademicProfileModal({ fullName, initialProgram, initial
           Welcome{fullName ? `, ${fullName.split(' ')[0]}` : ''}! Add your academic details so ScholarPath can verify your AdDU enrollment and show relevant scholarships.
         </p>
         <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
-          <FormField label="AdDU student number" hint="Use the number shown on your AdDU ID or registration record.">
-            <input className="min-h-12 rounded-control" value={studentNumber} onChange={(event) => { setStudentNumber(event.target.value.replace(/\D/g, '').slice(0, 12)); setValidationError(''); }} inputMode="numeric" autoComplete="off" placeholder="Enter Student ID No. (7 digits, alphanumeric)" required />
+          <FormField label="AdDU student number" hint="Enter the digits shown on your AdDU ID or registration record (4–12 digits).">
+            <input className="min-h-12 rounded-control" value={studentNumber} onChange={(event) => { setStudentNumber(event.target.value.replace(/\D/g, '').slice(0, 12)); setValidationError(''); }} inputMode="numeric" autoComplete="off" placeholder="e.g. 1234567" required />
           </FormField>
             <SelectPicker
               label="Program / Course"

@@ -30,16 +30,29 @@ const toDocument = (row) => ({
   uploadedAt: row.uploaded_at,
 });
 
-const toApplication = (row, scholarshipById, documentIdsByApplication) => ({
-  ...row,
-  studentId: row.student_id,
-  scholarshipId: row.scholarship_id,
-  scholarshipTitle: scholarshipById[row.scholarship_id]?.title || 'Scholarship application',
-  documentStatus: row.document_status,
-  submittedAt: row.submitted_at,
-  updatedAt: row.updated_at,
-  attachedDocuments: documentIdsByApplication[row.id] || [],
-});
+const toApplication = (row, scholarshipById, documentIdsByApplication, studentById = {}) => {
+  const student = studentById[row.student_id] || {};
+  return {
+    ...row,
+    studentId: row.student_id,
+    scholarshipId: row.scholarship_id,
+    scholarshipTitle: scholarshipById[row.scholarship_id]?.title || 'Scholarship application',
+    documentStatus: row.document_status,
+    submittedAt: row.submitted_at,
+    updatedAt: row.updated_at,
+    attachedDocuments: documentIdsByApplication[row.id] || [],
+    studentName: student.full_name || 'Student applicant',
+    studentProgram: student.degree_program || '',
+    studentDepartment: student.department || '',
+    studentQpi: student.qpi ?? null,
+    studentHouseholdIncome: student.household_income ?? null,
+    endorsement: row.endorsement ?? null,
+    interview: row.interview ?? null,
+    deliberation: row.deliberation ?? null,
+    release: row.release ?? null,
+    timeline: Array.isArray(row.timeline) ? row.timeline : [],
+  };
+};
 
 const toAcademicProgram = (row) => ({
   id: row.id,
@@ -80,6 +93,11 @@ export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
   const scholarships = (scholarshipsResult.data || []).map(toScholarship);
   const scholarshipById = Object.fromEntries(scholarships.map((entry) => [entry.id, entry]));
   const documents = (documentsResult.data || []).map(toDocument);
+
+  // Staff queues need applicant context. students_read is limited to their own
+  // profile by RLS, so this select is safe for every role.
+  const profilesResult = await supabase.from('profiles').select('user_id, full_name, department, degree_program, qpi, household_income');
+  const studentById = Object.fromEntries((profilesResult.data || []).map((entry) => [entry.user_id, entry]));
   const documentIdsByApplication = {};
   const applicationIds = (applicationsResult.data || []).map((entry) => entry.id);
   if (applicationIds.length) {
@@ -94,7 +112,7 @@ export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
     success: true,
     fallback: false,
     scholarships,
-    applications: (applicationsResult.data || []).map((entry) => toApplication(entry, scholarshipById, documentIdsByApplication)),
+    applications: (applicationsResult.data || []).map((entry) => toApplication(entry, scholarshipById, documentIdsByApplication, studentById)),
     documents,
     announcements: (announcementsResult.data || []).map(toAnnouncement),
     notifications: (notificationsResult.data || []).map(toNotification),
@@ -117,6 +135,36 @@ export const loadSupabaseAcademicPrograms = async () => {
 
 export const updateSupabaseApplicationStatus = (applicationId, status) => (
   ensureReady() ? supabase.from('applications').update({ status, updated_at: new Date().toISOString() }).eq('id', applicationId) : Promise.resolve({ error: null })
+);
+
+// Persists an SOP stage payload (endorsement, interview, deliberation, release)
+// alongside the application status and timeline.
+export const updateSupabaseApplicationStage = (applicationId, status, stagePatch = {}) => (
+  ensureReady()
+    ? supabase.from('applications').update({ status, updated_at: new Date().toISOString(), ...stagePatch }).eq('id', applicationId)
+    : Promise.resolve({ error: null })
+);
+
+// Department review records mirror chair decisions for schema-level auditing.
+export const upsertSupabaseDepartmentReview = ({ applicationId, reviewerId, studentName, department, qpi, householdIncome, status, recommendation }) => (
+  ensureReady()
+    ? supabase.from('department_reviews').insert({
+        application_id: applicationId,
+        reviewer_id: reviewerId,
+        student_name: studentName || 'Student applicant',
+        department: department || 'Unassigned',
+        qpi: qpi ?? 0,
+        household_income: householdIncome ?? 0,
+        status,
+        recommendation: recommendation || recommendationNote(status),
+      }).select().single()
+    : Promise.resolve({ data: null, error: null })
+);
+
+const recommendationNote = (status) => (
+  status === 'Endorsed'
+    ? 'Endorsed to the next evaluation stage by the Department Chair.'
+    : 'Returned to OSA for document validation.'
 );
 
 export const createSupabaseApplication = async ({ studentId, scholarshipId, documentStatus, attachedDocuments, notes }) => {

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
-import { createInitialState, demoUsers, departmentReviews, readStoredState, storageKey } from './lib/demoState';
+import { createInitialState, demoUsers, readStoredState, storageKey } from './lib/demoState';
 import { mergeNotifications } from './lib/notificationMerge';
 import { getDeadlineStatus, rankScholarships, searchScholarships } from './lib/eligibility';
 import { academicPrograms, getAcademicProgram } from './lib/academicPrograms';
 import { getSupabaseSession, getUserProfile, resetPasswordForEmail, signInWithEmailPassword, signOutFromSupabase, signUpWithEmailPassword, updateUserProfile } from './lib/auth';
-import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseDocument, deleteSupabaseDocument, loadSupabaseAcademicPrograms, loadSupabaseWorkspace, markSupabaseNotificationRead, submitSupabaseApplication, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus } from './lib/supabaseData';
+import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseDocument, deleteSupabaseDocument, loadSupabaseAcademicPrograms, loadSupabaseWorkspace, markSupabaseNotificationRead, submitSupabaseApplication, updateSupabaseApplicationStage, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus, upsertSupabaseDepartmentReview } from './lib/supabaseData';
 import AcademicProfileModal from './components/AcademicProfileModal';
 import { NotificationDropdown } from './components/pageParts';
 import LoginScreenPage from './pages/LoginScreen';
@@ -288,14 +288,6 @@ function App() {
     unreadNotifications: unreadNotifications.length,
   }), [eligibleScholarships.length, scholarshipCatalog.length, studentApplications, unreadNotifications.length]);
 
-  const switchRole = (role) => {
-    updateState((previous) => ({
-      viewerRole: role,
-      activeView: 'dashboard',
-      profileDraft: role === 'student' ? previous.profileDraft : previous.profileDraft,
-    }));
-  };
-
   const navigate = (view) => {
     updateState({ activeView: view });
     setIsMobileNavOpen(false);
@@ -513,20 +505,142 @@ function App() {
     }));
   };
 
-  const changeApplicationStatus = (applicationId, status) => {
+  const changeApplicationStatus = (applicationId, status, options = {}) => {
     if (isSupabaseWorkspaceLoaded) updateSupabaseApplicationStatus(applicationId, status);
+    const actor = state.viewerRole === 'department_chair' ? 'Department Chair' : 'OSA Administrator';
+    const stageEvent = {
+      id: `ev-${crypto.randomUUID()}`,
+      stage: status,
+      note: options?.note || `Application moved to ${status}.`,
+      actor,
+      at: new Date().toISOString().slice(0, 10),
+    };
+    const { note: _note, ...stageFields } = options || {};
     setState((previous) => ({
       ...previous,
       applications: previous.applications.map((entry) => entry.id === applicationId ? {
         ...entry,
         status,
         updatedAt: new Date().toISOString().slice(0, 10),
+        ...stageFields,
+        timeline: [...(entry.timeline || []), stageEvent],
       } : entry),
       notifications: prependInAppNotification(previous, {
         id: `not-${crypto.randomUUID()}`,
         title: `Application moved to ${status}`,
         channel: 'Email',
-        body: 'OSA updated the status in the admin dashboard and triggered a status notification.',
+        body: `${actor} updated the application status to ${status} in the admin workspace.`,
+        status: 'Unread',
+        createdAt: new Date().toISOString().slice(0, 10),
+      }),
+    }));
+  };
+
+  // SOP step 4 — the Department Chair endorses qualified applications to the
+  // next stage (interview and other evaluation).
+  const endorseApplication = (applicationId, note = '') => {
+    const application = state.applications.find((entry) => entry.id === applicationId);
+    if (!application) return;
+    const record = {
+      reviewedBy: currentProfile.fullName || 'Department Chair',
+      decision: 'Endorsed',
+      note: note || 'Endorsed based on academic standing and verified documents.',
+      decidedAt: new Date().toISOString().slice(0, 10),
+    };
+    if (isSupabaseWorkspaceLoaded) {
+      updateSupabaseApplicationStage(applicationId, 'Endorsed', { endorsement: record });
+      upsertSupabaseDepartmentReview({
+        applicationId,
+        reviewerId: currentProfile.id,
+        studentName: application.studentName,
+        department: currentProfile.department,
+        qpi: application.studentQpi,
+        householdIncome: application.studentHouseholdIncome,
+        status: 'Endorsed',
+        recommendation: record.note,
+      });
+    }
+    changeApplicationStatus(applicationId, 'Endorsed', {
+      note: record.note,
+      endorsement: record,
+    });
+  };
+
+  // SOP step 5 — interview scheduling; the interviewing panel comes from the
+  // school where the applicant's program belongs.
+  const scheduleInterview = (applicationId, { scheduledAt, panel, note = '' } = {}) => {
+    const application = state.applications.find((entry) => entry.id === applicationId);
+    if (!application) return;
+    const record = {
+      scheduledAt: scheduledAt || null,
+      panel: panel || `${application.studentDepartment || 'Department'} Scholarship Panel`,
+      school: application.studentDepartment || 'Applicant school',
+      note,
+      outcome: null,
+    };
+    if (isSupabaseWorkspaceLoaded) {
+      updateSupabaseApplicationStage(applicationId, 'Interview', { interview: record });
+    }
+    changeApplicationStatus(applicationId, 'Interview', {
+      note: `Interview scheduled for ${record.scheduledAt || 'an upcoming date'} with the ${record.panel}.`,
+      interview: record,
+    });
+  };
+
+  // SOP step 6 — evaluation and deliberation by the School Scholarship
+  // Sub-committee, producing a recommendation.
+  const recordDeliberation = (applicationId, decision, note = '') => {
+    const application = state.applications.find((entry) => entry.id === applicationId);
+    if (!application) return;
+    const nextStatus = decision === 'Approved' ? 'Approved' : decision === 'Rejected' ? 'Rejected' : 'Recommended';
+    const record = {
+      decidedBy: 'School Scholarship Sub-committee',
+      decision: nextStatus === 'Recommended' ? 'Recommended' : nextStatus,
+      note,
+      decidedAt: new Date().toISOString().slice(0, 10),
+    };
+    if (isSupabaseWorkspaceLoaded) {
+      updateSupabaseApplicationStage(applicationId, nextStatus, { deliberation: record });
+    }
+    changeApplicationStatus(applicationId, nextStatus, {
+      note: note || `Sub-committee deliberation recorded as ${nextStatus}.`,
+      deliberation: record,
+    });
+  };
+
+  // SOP steps 7 and 8 — the scholarship committee approves and the result is
+  // released to the applicant through the Office of Admission.
+  const releaseApplicationResults = (applicationId) => {
+    const application = state.applications.find((entry) => entry.id === applicationId);
+    if (!application) return;
+    const record = {
+      releasedTo: 'Office of Admission',
+      releasedAt: new Date().toISOString().slice(0, 10),
+      reference: `OAA-${applicationId.slice(0, 8).toUpperCase()}`,
+    };
+    if (isSupabaseWorkspaceLoaded) {
+      updateSupabaseApplicationStage(applicationId, 'Released', { release: record });
+    }
+    setState((previous) => ({
+      ...previous,
+      applications: previous.applications.map((entry) => entry.id === applicationId ? {
+        ...entry,
+        status: 'Released',
+        release: record,
+        updatedAt: new Date().toISOString().slice(0, 10),
+        timeline: [...(entry.timeline || []), {
+          id: `ev-${crypto.randomUUID()}`,
+          stage: 'Released',
+          note: `Result released to the applicant through the Office of Admission (${record.reference}).`,
+          actor: 'OSA Administrator',
+          at: new Date().toISOString().slice(0, 10),
+        }],
+      } : entry),
+      notifications: prependInAppNotification(previous, {
+        id: `not-${crypto.randomUUID()}`,
+        title: `${application.scholarshipTitle} result released`,
+        channel: 'Email',
+        body: 'The Office of Admission has released the result of your scholarship application.',
         status: 'Unread',
         createdAt: new Date().toISOString().slice(0, 10),
       }),
@@ -697,8 +811,13 @@ function App() {
   };
 
   const eligiblePreview = eligibleScholarships.slice(0, 6);
-  const departmentQueue = (isSupabaseWorkspaceLoaded ? state.departmentReviews : departmentReviews)
-    .filter((entry) => entry.department === currentProfile.department);
+  // Department queue is derived from applications joined to the student's
+  // school-level department, so it stays consistent with profiles.department
+  // from the academic program taxonomy rather than a separately seeded table.
+  const departmentQueue = state.applications.filter((entry) => (
+    (entry.studentDepartment || '') === currentProfile.department
+    && entry.status !== 'Draft'
+  ));
   const hasIncompleteStudentProfile = state.viewerRole === 'student' && (
     !currentIdentity.degreeProgram
     || !currentIdentity.studentNumber
@@ -773,7 +892,6 @@ function App() {
         onSignUp={signup}
         onForgotPassword={requestPasswordReset}
         rememberedEmail={state.savedEmail}
-        rememberedRole={state.savedRole}
         isRemembered={state.rememberMe}
         theme={state.theme}
         onToggleTheme={() => updateState((prev) => ({ theme: prev.theme === 'light' ? 'dark' : 'light' }))}
@@ -907,7 +1025,6 @@ function App() {
               announcements={state.announcements}
               onOpenExplorer={() => navigate('explore')}
               onOpenEligibility={() => navigate('eligibility')}
-              onSubmitApplication={submitApplication}
               onTrackScholarship={applyToScholarship}
               onMarkRead={markNotificationRead}
               onShowApplications={() => navigate('applications')}
@@ -925,7 +1042,7 @@ function App() {
               scholarships={filteredScholarships}
               searchQuery={state.searchQuery}
               filters={state.filters}
-              onSearchChange={(value) => updateState((previous) => ({ searchQuery: value }))}
+              onSearchChange={(value) => updateState({ searchQuery: value })}
               onFilterChange={(patch) => updateState((previous) => ({ filters: { ...previous.filters, ...patch } }))}
               onApply={applyToScholarship}
             />
@@ -948,7 +1065,6 @@ function App() {
               documents={studentDocuments}
               scholarships={scholarshipCatalog}
               onSubmit={submitApplication}
-                onOpenVault={() => navigate('vault')}
             />
           )}
 
@@ -957,7 +1073,6 @@ function App() {
               documents={studentDocuments}
               onUpload={addDocument}
               onDelete={deleteDocument}
-              onOpenApplications={() => navigate('applications')}
             />
           )}
 
@@ -968,6 +1083,10 @@ function App() {
               announcements={state.announcements}
               notifications={visibleNotifications}
               onChangeApplication={changeApplicationStatus}
+              onEndorseApplication={endorseApplication}
+              onScheduleInterview={scheduleInterview}
+              onRecordDeliberation={recordDeliberation}
+              onReleaseResults={releaseApplicationResults}
               onChangeDocument={changeDocumentStatus}
               onCreateAnnouncement={addAnnouncement}
               onMarkRead={markNotificationRead}
@@ -978,8 +1097,12 @@ function App() {
             <DepartmentReviewViewPage
               profile={currentProfile}
               queue={departmentQueue}
-              applications={state.applications}
+              documents={state.documents}
               onChangeApplication={changeApplicationStatus}
+              onEndorseApplication={endorseApplication}
+              onScheduleInterview={scheduleInterview}
+              onRecordDeliberation={recordDeliberation}
+              onReleaseResults={releaseApplicationResults}
             />
           )}
 

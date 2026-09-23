@@ -198,9 +198,13 @@ export const getApplicationProgress = (status) => {
   switch (status) {
     case 'Draft': return 15;
     case 'Submitted': return 35;
-    case 'Under Review': return 60;
-    case 'For Verification': return 75;
-    case 'Approved': return 100;
+    case 'Under Review': return 45;
+    case 'For Verification': return 55;
+    case 'Endorsed': return 65;
+    case 'Interview': return 75;
+    case 'Recommended': return 85;
+    case 'Approved': return 95;
+    case 'Released': return 100;
     case 'Rejected': return 100;
     default: return 0;
   }
