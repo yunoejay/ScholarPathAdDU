@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     const resend = getResendConfig(Deno.env.toObject());
     const recipients = new Map();
     const deliveries = [];
-    const stats = { inApp: 0, emailed: 0, emailSkipped: 0, emailFailed: 0 };
+    const stats = { inApp: 0, emailed: 0, emailSkipped: 0, emailFailed: 0, suppressed: 0 };
 
     for (const reminder of dueReminders) {
       const isApplicationReminder = reminder.kind === 'application';
@@ -188,20 +188,25 @@ Deno.serve(async (req) => {
         if (!profile) continue;
 
         const preferences = profile.notification_preferences ?? {};
+
+        // A disabled reminder timing suppresses this reminder on every channel,
+        // matching the client-side generator in src/App.jsx. Nothing is recorded
+        // for it, so enabling the timing later still delivers it. Counting it as
+        // a distinct outcome keeps `deliveries` and `emailSkipped` honest.
+        if (!isReminderEnabledForUser(preferences, reminder.daysBefore)) {
+          stats.suppressed += 1;
+          continue;
+        }
+
         const kindLabel = isCustomReminder
           ? 'Personal deadline'
           : isApplicationReminder ? 'Application deadline' : 'Deadline reminder';
         const body = `${reminder.itemTitle} is due on ${deadline ?? 'its recorded deadline'}.`;
 
-        // Both channels for this reminder are gated by the reminder timing,
-        // matching the client-side generator in src/App.jsx: a disabled offset
-        // suppresses that reminder on every channel.
-        const offsetEnabled = isReminderEnabledForUser(preferences, reminder.daysBefore);
-
         // Channel 1 — in-app row, gated by notificationPreferences.inAppEnabled.
         // notifications.channel is constrained to 'SMS' / 'Email' / 'In-app', so
         // the deadline kind is carried by the title and body instead.
-        const wantsInApp = preferences.inAppEnabled !== false && offsetEnabled;
+        const wantsInApp = preferences.inAppEnabled !== false;
         let inAppError = null;
         if (wantsInApp) {
           const { error: notificationError } = await supabaseAdmin.from('notifications').insert({
@@ -216,8 +221,10 @@ Deno.serve(async (req) => {
         }
         const inAppWritten = wantsInApp && !inAppError;
 
-        // Channel 2 — email, gated by emailEnabled plus the reminder timing.
-        const wantsEmail = isEmailEnabledForUser(preferences) && offsetEnabled;
+        // Channel 2 — email, gated by emailEnabled. The reminder timing is
+        // already applied above, so a skip here means only that the student
+        // turned the email channel off.
+        const wantsEmail = isEmailEnabledForUser(preferences);
         let emailResult = { ok: false, skipped: true, reason: 'Email notifications disabled' };
 
         if (wantsEmail) {
@@ -285,6 +292,7 @@ Deno.serve(async (req) => {
       emailsSent: stats.emailed,
       emailSkipped: stats.emailSkipped,
       emailFailed: stats.emailFailed,
+      suppressed: stats.suppressed,
       emailConfigured: Boolean(resend.apiKey),
       preview: deliveries.slice(0, 10),
     });
