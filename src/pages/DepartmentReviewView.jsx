@@ -17,9 +17,6 @@ export default function DepartmentReviewView({
   documents,
   onChangeApplication,
   onEndorseApplication,
-  onScheduleInterview,
-  onRecordDeliberation,
-  onReleaseResults,
   onFlagForValidation,
 }) {
   const [selectedId, setSelectedId] = useState(null);
@@ -70,7 +67,11 @@ export default function DepartmentReviewView({
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" onClick={() => setSelectedId(entry.id)}>Open review</Button>
                       <Button type="button" disabled={entry.status !== 'For Verification'} onClick={() => onEndorseApplication(entry.id)}>Endorse</Button>
-                      <Button type="button" onClick={() => onFlagForValidation?.(entry.id)}>Flag for validation</Button>
+                      <Button
+                        type="button"
+                        disabled={!['Submitted', 'Under Review'].includes(entry.status)}
+                        onClick={() => onFlagForValidation?.(entry.id)}
+                      >Flag for validation</Button>
                     </div>
                   </div>
                 </article>
@@ -105,9 +106,6 @@ export default function DepartmentReviewView({
           onClose={() => setSelectedId(null)}
           onStatusChange={onChangeApplication}
           onEndorse={onEndorseApplication}
-          onScheduleInterview={onScheduleInterview}
-          onRecordDeliberation={onRecordDeliberation}
-          onRelease={onReleaseResults}
         />
       )}
     </div>

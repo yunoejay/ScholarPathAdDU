@@ -44,7 +44,7 @@ export default function ApplicationReviewModal({
   const [deliberationNote, setDeliberationNote] = useState('');
   const [previewDoc, setPreviewDoc] = useState(null);
   const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
-  const nextStatuses = getNextApplicationStatuses(application.status);
+  const nextStatuses = getNextApplicationStatuses(application.status, role);
   const linkedDocuments = (application.attachedDocuments || [])
     .map((id) => documents.find((doc) => doc.id === id))
     .filter(Boolean);
@@ -149,7 +149,7 @@ export default function ApplicationReviewModal({
             </Panel>
           )}
 
-          {application.status === 'Endorsed' && (
+          {isAdmissionsOffice && application.status === 'Endorsed' && (
             <Panel className="grid gap-3">
               <h4 className="text-sm font-bold uppercase tracking-[0.1em] text-app-muted">Schedule the interview</h4>
               <label className="grid gap-2 text-sm text-app-text">
@@ -164,7 +164,7 @@ export default function ApplicationReviewModal({
             </Panel>
           )}
 
-          {application.status === 'Interview' && (
+          {isAdmissionsOffice && application.status === 'Interview' && (
             <Panel className="grid gap-3">
               <h4 className="text-sm font-bold uppercase tracking-[0.1em] text-app-muted">Evaluation and deliberation</h4>
               <label className="grid gap-2 text-sm text-app-text">
@@ -193,9 +193,9 @@ export default function ApplicationReviewModal({
                     if (status === 'Endorsed') {
                       onEndorse?.(application.id);
                     } else if (status === 'Interview') {
-                      onScheduleInterview(application.id, { scheduledAt: interviewDate, panel: interviewPanel });
+                      onScheduleInterview?.(application.id, { scheduledAt: interviewDate, panel: interviewPanel });
                     } else if (status === 'Recommended') {
-                      onRecordDeliberation(application.id, 'Recommended', deliberationNote);
+                      onRecordDeliberation?.(application.id, 'Recommended', deliberationNote);
                     } else if (status === 'Released') {
                       onRelease?.(application.id);
                     } else {

@@ -44,20 +44,6 @@ alter table profiles add constraint profiles_bio_length_check
 -- keys mirror PROFILE_DETAIL_KEYS in src/lib/profile.js.
 alter table profiles add column if not exists profile_details jsonb not null default '{}'::jsonb;
 
--- Standard Procedure stage records (endorsement, interview, deliberation,
--- release) and the event timeline live on applications as JSON payloads.
-alter table applications add column if not exists endorsement jsonb;
-alter table applications add column if not exists interview jsonb;
-alter table applications add column if not exists deliberation jsonb;
-alter table applications add column if not exists release jsonb;
-alter table applications add column if not exists timeline jsonb not null default '[]'::jsonb;
-
--- Widen the application status check to cover the SOP stage sequence
--- (Endorsed, Interview, Recommended, Released) additively.
-alter table applications drop constraint if exists applications_status_check;
-alter table applications add constraint applications_status_check
-  check (status in ('Draft', 'Submitted', 'Under Review', 'For Verification', 'Endorsed', 'Interview', 'Recommended', 'Approved', 'Released', 'Rejected'));
-
 create table if not exists scholarships (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -116,6 +102,21 @@ create table if not exists applications (
   updated_at timestamptz not null default now()
 );
 
+-- Standard Procedure stage records (endorsement, interview, deliberation,
+-- release) and the event timeline live on applications as JSON payloads. Keep
+-- these alters after table creation so this reference schema works on a fresh DB.
+alter table applications add column if not exists endorsement jsonb;
+alter table applications add column if not exists interview jsonb;
+alter table applications add column if not exists deliberation jsonb;
+alter table applications add column if not exists release jsonb;
+alter table applications add column if not exists timeline jsonb not null default '[]'::jsonb;
+
+-- Widen the application status check to cover the SOP stage sequence
+-- (Endorsed, Interview, Recommended, Released) additively.
+alter table applications drop constraint if exists applications_status_check;
+alter table applications add constraint applications_status_check
+  check (status in ('Draft', 'Submitted', 'Under Review', 'For Verification', 'Endorsed', 'Interview', 'Recommended', 'Approved', 'Released', 'Rejected'));
+
 create table if not exists application_documents (
   application_id uuid not null references applications(id) on delete cascade,
   document_id uuid not null references documents(id) on delete cascade,
@@ -138,8 +139,12 @@ create table if not exists notifications (
   body text not null,
   channel text not null check (channel in ('SMS', 'Email', 'In-app')),
   status text not null default 'Unread' check (status in ('Unread', 'Read')),
+  source_key text,
   created_at timestamptz not null default now()
 );
+alter table notifications add column if not exists source_key text;
+create unique index if not exists notifications_profile_source_key_unique
+  on notifications (profile_id, source_key);
 
 create table if not exists academic_programs (
   id uuid primary key default gen_random_uuid(),
@@ -165,6 +170,8 @@ create table if not exists department_reviews (
   created_at timestamptz not null default now()
 );
 alter table department_reviews add column if not exists application_id uuid references applications(id) on delete cascade;
+create unique index if not exists department_reviews_application_reviewer_unique
+  on department_reviews (application_id, reviewer_id);
 
 alter table profiles enable row level security;
 alter table scholarships enable row level security;
@@ -225,6 +232,7 @@ create trigger on_auth_user_created
 drop policy if exists "profiles_self_read_write" on profiles;
 drop policy if exists "staff_read_profiles" on profiles;
 drop policy if exists "scholarships_read_all" on scholarships;
+drop policy if exists "admissions_office_scholarships_manage" on scholarships;
 drop policy if exists "documents_self_access" on documents;
 drop policy if exists "osa_documents_access" on documents;
 drop policy if exists "admissions_office_documents_access" on documents;
@@ -234,6 +242,8 @@ drop policy if exists "osa_applications_access" on applications;
 drop policy if exists "admissions_office_applications_access" on applications;
 drop policy if exists "chair_applications_read" on applications;
 drop policy if exists "chair_applications_status" on applications;
+drop policy if exists "chair_applications_flag_for_validation" on applications;
+drop policy if exists "chair_applications_endorse" on applications;
 drop policy if exists "application_documents_self_access" on application_documents;
 drop policy if exists "staff_application_documents_access" on application_documents;
 drop policy if exists "announcements_read_all" on announcements;
@@ -253,6 +263,18 @@ for select using (public.current_profile_role() in ('admissions_office', 'depart
 
 create policy "scholarships_read_all" on scholarships
 for select using (true);
+create policy "admissions_office_scholarships_manage" on scholarships
+for all using (
+  public.current_profile_role() = 'admissions_office'
+  and category = 'Internal Endowment'
+  and is_external = false
+  and rule_family in ('general-pool', 'honors', 'work-study')
+) with check (
+  public.current_profile_role() = 'admissions_office'
+  and category = 'Internal Endowment'
+  and is_external = false
+  and rule_family in ('general-pool', 'honors', 'work-study')
+);
 create policy "documents_self_access" on documents
 for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 create policy "admissions_office_documents_access" on documents
@@ -271,12 +293,24 @@ for select using (
   public.current_profile_role() = 'department_chair'
   and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
 );
-create policy "chair_applications_status" on applications
+create policy "chair_applications_flag_for_validation" on applications
 for update using (
   public.current_profile_role() = 'department_chair'
+  and status in ('Submitted', 'Under Review')
   and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
 ) with check (
   public.current_profile_role() = 'department_chair'
+  and status = 'For Verification'
+  and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
+);
+create policy "chair_applications_endorse" on applications
+for update using (
+  public.current_profile_role() = 'department_chair'
+  and status = 'For Verification'
+  and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
+) with check (
+  public.current_profile_role() = 'department_chair'
+  and status = 'Endorsed'
   and exists (select 1 from profiles p where p.user_id = applications.student_id and p.department = public.current_profile_department())
 );
 create policy "application_documents_self_access" on application_documents

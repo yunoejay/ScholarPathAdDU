@@ -8,7 +8,7 @@ import { getProfileDetails, getSupabaseSession, getUserProfile, resetPasswordFor
 import { ACCOUNT_FIELD_KEYS, PROFILE_DETAIL_KEYS, PROFILE_DRAFT_KEYS, STAFF_EDITABLE_FIELD_KEYS, deriveYearStanding, getDocumentTitle, getStandingRequirements, pickEligibilityAttributes, pickFields } from './lib/profile';
 import { deriveAttributeVerifications } from './lib/verification';
 import { DOCUMENT_MAX_BYTES } from './lib/documentStorage';
-import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseCustomDeadline, createSupabaseDocument, deleteSupabaseCustomDeadline, deleteSupabaseDocument, loadSupabaseAcademicPrograms, loadSupabaseWorkspace, markSupabaseNotificationRead, notifySupabaseApplicationStatus, sendSupabaseTestEmail, sendSupabaseTestSms, submitSupabaseApplication, updateSupabaseApplicationStage, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus, updateSupabaseNotificationPreferences, upsertSupabaseDepartmentReview } from './lib/supabaseData';
+import { createSupabaseAnnouncement, createSupabaseApplication, createSupabaseCustomDeadline, createSupabaseDocument, createSupabaseScholarship, deleteSupabaseCustomDeadline, deleteSupabaseDocument, loadSupabaseAcademicPrograms, loadSupabaseWorkspace, markSupabaseNotificationRead, notifySupabaseApplicationStatus, sendSupabaseTestEmail, sendSupabaseTestSms, submitSupabaseApplication, updateSupabaseApplicationStage, updateSupabaseApplicationStatus, updateSupabaseDocumentStatus, updateSupabaseNotificationPreferences, updateSupabaseScholarship, upsertSupabaseDepartmentReview } from './lib/supabaseData';
 import AcademicProfileModal from './components/AcademicProfileModal';
 import { NotificationDropdown } from './components/pageParts';
 import LoginScreenPage from './pages/LoginScreen';
@@ -670,11 +670,23 @@ function App() {
   };
 
   const submitApplication = (applicationId) => {
+    const application = state.applications.find((entry) => entry.id === applicationId);
+    if (!application || application.status !== 'Draft') return;
+    const submittedAt = new Date().toISOString();
+    const submitEvent = {
+      id: `ev-${crypto.randomUUID()}`,
+      stage: 'Submitted',
+      note: 'Student submitted the draft application to the Admissions Office for review.',
+      actor: 'Student',
+      at: submittedAt.slice(0, 10),
+    };
     if (isSupabaseWorkspaceLoaded) {
-      // Wait for the status write to land before emailing, so the Edge Function
-      // reads the submitted status rather than the previous one.
-      Promise.resolve(submitSupabaseApplication(applicationId))
-        .then(() => notifySupabaseApplicationStatus(applicationId))
+      // Persist the submission event and status before sending the status alert.
+      Promise.resolve(submitSupabaseApplication(applicationId, [...(application.timeline || []), submitEvent]))
+        .then((result) => {
+          if (!result?.error) return notifySupabaseApplicationStatus(applicationId);
+          return undefined;
+        })
         .catch(() => undefined);
     }
     setState((previous) => ({
@@ -682,27 +694,32 @@ function App() {
       applications: previous.applications.map((entry) => entry.id === applicationId ? {
         ...entry,
         status: 'Submitted',
-        submittedAt: entry.submittedAt ?? new Date().toISOString().slice(0, 10),
+        submittedAt: entry.submittedAt ?? submittedAt.slice(0, 10),
         updatedAt: new Date().toISOString().slice(0, 10),
+        timeline: [...(entry.timeline || []), submitEvent],
       } : entry),
-      notifications: prependInAppNotification(previous, {
-        id: `not-${crypto.randomUUID()}`,
-        title: 'Application submitted',
-        channel: 'In-app',
-        body: 'Your scholarship application has been submitted to the centralized tracker.',
-        status: 'Unread',
-        createdAt: new Date().toISOString().slice(0, 10),
-      }),
     }));
   };
 
   const changeApplicationStatus = (applicationId, status, options = {}) => {
-    if (isSupabaseWorkspaceLoaded) {
-      // Chain rather than fire-and-forget so the Edge Function reads the new
-      // status instead of the previous one.
-      Promise.resolve(updateSupabaseApplicationStatus(applicationId, status))
-        .then(() => notifySupabaseApplicationStatus(applicationId))
-        .catch(() => undefined);
+    const application = state.applications.find((entry) => entry.id === applicationId);
+    if (!application) return;
+    if (state.viewerRole === 'department_chair') {
+      const allowedChairTransition = status === 'Endorsed'
+        ? application.status === 'For Verification'
+        : status === 'For Verification' && ['Submitted', 'Under Review'].includes(application.status);
+      if (!allowedChairTransition) return;
+    } else if (state.viewerRole === 'admissions_office') {
+      const allowedStatuses = {
+        Submitted: ['Under Review', 'For Verification', 'Rejected'],
+        'Under Review': ['For Verification', 'Rejected'],
+        'For Verification': ['Rejected'],
+        Endorsed: ['Rejected'],
+        Interview: ['Rejected'],
+        Recommended: ['Approved', 'Rejected'],
+        Approved: ['Released'],
+      };
+      if (!allowedStatuses[application.status]?.includes(status)) return;
     }
     const actor = state.viewerRole === 'department_chair' ? 'Department Chair' : 'Admissions Office';
     const stageEvent = {
@@ -713,6 +730,19 @@ function App() {
       at: new Date().toISOString().slice(0, 10),
     };
     const { note: _note, ...stageFields } = options || {};
+    if (isSupabaseWorkspaceLoaded) {
+      // Chain rather than fire-and-forget so the Edge Function reads the new
+      // status after its status, SOP payload, and timeline are persisted.
+      Promise.resolve(updateSupabaseApplicationStatus(
+        applicationId,
+        status,
+        [...(application.timeline || []), stageEvent],
+        stageFields,
+      )).then((result) => {
+        if (!result?.error) return notifySupabaseApplicationStatus(applicationId);
+        return undefined;
+      }).catch(() => undefined);
+    }
     setState((previous) => ({
       ...previous,
       applications: previous.applications.map((entry) => entry.id === applicationId ? {
@@ -722,48 +752,23 @@ function App() {
         ...stageFields,
         timeline: [...(entry.timeline || []), stageEvent],
       } : entry),
-      // Staff status changes are captured in the application timeline, not in the
-      // staff member's own notification center. Student-facing notifications are
-      // delivered by the notify-application-status Edge Function instead.
-      notifications: state.viewerRole === 'student'
-        ? prependInAppNotification(previous, {
-            id: `not-${crypto.randomUUID()}`,
-            title: `Application moved to ${status}`,
-            channel: 'In-app',
-            body: `Your application status was updated to ${status}.`,
-            status: 'Unread',
-            createdAt: new Date().toISOString().slice(0, 10),
-          })
-        : previous.notifications,
     }));
   };
 
-  // A Department Chair can flag an application for central document validation
-  // without moving it. This records a note-only timeline entry, so it never
-  // changes the status and never triggers a status notification.
-  const flagApplicationForValidation = (applicationId, note = '') => {
-    setState((previous) => ({
-      ...previous,
-      applications: previous.applications.map((entry) => entry.id === applicationId ? {
-        ...entry,
-        updatedAt: new Date().toISOString().slice(0, 10),
-        timeline: [...(entry.timeline || []), {
-          id: `ev-${crypto.randomUUID()}`,
-          stage: entry.status,
-          note: note || 'Flagged for central document validation.',
-          actor: currentProfile.fullName || 'Department Chair',
-          kind: 'note',
-          at: new Date().toISOString().slice(0, 10),
-        }],
-      } : entry),
-    }));
+  // A Department Chair flags submitted applications for central validation by
+  // moving them to For Verification and recording the reason in the timeline.
+  const flagApplicationForValidation = (applicationId) => {
+    changeApplicationStatus(applicationId, 'For Verification', {
+      note: 'Flagged for central document validation.',
+    });
   };
 
   // SOP step 4 — the Department Chair endorses qualified applications to the
   // next stage (interview and other evaluation).
   const endorseApplication = (applicationId, note = '') => {
+    if (state.viewerRole !== 'department_chair') return;
     const application = state.applications.find((entry) => entry.id === applicationId);
-    if (!application) return;
+    if (!application || application.status !== 'For Verification') return;
     const record = {
       reviewedBy: currentProfile.fullName || 'Department Chair',
       decision: 'Endorsed',
@@ -771,7 +776,6 @@ function App() {
       decidedAt: new Date().toISOString().slice(0, 10),
     };
     if (isSupabaseWorkspaceLoaded) {
-      updateSupabaseApplicationStage(applicationId, 'Endorsed', { endorsement: record });
       upsertSupabaseDepartmentReview({
         applicationId,
         reviewerId: currentProfile.id,
@@ -792,8 +796,9 @@ function App() {
   // SOP step 5 — interview scheduling; the interviewing panel comes from the
   // school where the applicant's program belongs.
   const scheduleInterview = (applicationId, { scheduledAt, panel, note = '' } = {}) => {
+    if (state.viewerRole !== 'admissions_office') return;
     const application = state.applications.find((entry) => entry.id === applicationId);
-    if (!application) return;
+    if (!application || application.status !== 'Endorsed') return;
     const record = {
       scheduledAt: scheduledAt || null,
       panel: panel || `${application.studentDepartment || 'Department'} Scholarship Panel`,
@@ -801,9 +806,6 @@ function App() {
       note,
       outcome: null,
     };
-    if (isSupabaseWorkspaceLoaded) {
-      updateSupabaseApplicationStage(applicationId, 'Interview', { interview: record });
-    }
     changeApplicationStatus(applicationId, 'Interview', {
       note: `Interview scheduled for ${record.scheduledAt || 'an upcoming date'} with the ${record.panel}.`,
       interview: record,
@@ -813,8 +815,9 @@ function App() {
   // SOP step 6 — evaluation and deliberation by the School Scholarship
   // Sub-committee, producing a recommendation.
   const recordDeliberation = (applicationId, decision, note = '') => {
+    if (state.viewerRole !== 'admissions_office') return;
     const application = state.applications.find((entry) => entry.id === applicationId);
-    if (!application) return;
+    if (!application || application.status !== 'Interview') return;
     const nextStatus = decision === 'Approved' ? 'Approved' : decision === 'Rejected' ? 'Rejected' : 'Recommended';
     const record = {
       decidedBy: 'School Scholarship Sub-committee',
@@ -822,9 +825,6 @@ function App() {
       note,
       decidedAt: new Date().toISOString().slice(0, 10),
     };
-    if (isSupabaseWorkspaceLoaded) {
-      updateSupabaseApplicationStage(applicationId, nextStatus, { deliberation: record });
-    }
     changeApplicationStatus(applicationId, nextStatus, {
       note: note || `Sub-committee deliberation recorded as ${nextStatus}.`,
       deliberation: record,
@@ -834,15 +834,29 @@ function App() {
   // SOP steps 7 and 8 — the scholarship committee approves and the result is
   // released to the applicant through the Admissions Office.
   const releaseApplicationResults = (applicationId) => {
+    if (state.viewerRole !== 'admissions_office') return;
     const application = state.applications.find((entry) => entry.id === applicationId);
-    if (!application) return;
+    if (!application || application.status !== 'Approved') return;
     const record = {
       releasedTo: 'Admissions Office',
       releasedAt: new Date().toISOString().slice(0, 10),
       reference: `OAA-${applicationId.slice(0, 8).toUpperCase()}`,
     };
+    const stageEvent = {
+      id: `ev-${crypto.randomUUID()}`,
+      stage: 'Released',
+      note: `Result released to the applicant through the Admissions Office (${record.reference}).`,
+      actor: 'Admissions Office',
+      at: new Date().toISOString().slice(0, 10),
+    };
     if (isSupabaseWorkspaceLoaded) {
-      updateSupabaseApplicationStage(applicationId, 'Released', { release: record });
+      Promise.resolve(updateSupabaseApplicationStage(applicationId, 'Released', {
+        release: record,
+        timeline: [...(application.timeline || []), stageEvent],
+      })).then((result) => {
+        if (!result?.error) return notifySupabaseApplicationStatus(applicationId);
+        return undefined;
+      }).catch(() => undefined);
     }
     setState((previous) => ({
       ...previous,
@@ -851,22 +865,8 @@ function App() {
         status: 'Released',
         release: record,
         updatedAt: new Date().toISOString().slice(0, 10),
-        timeline: [...(entry.timeline || []), {
-          id: `ev-${crypto.randomUUID()}`,
-          stage: 'Released',
-          note: `Result released to the applicant through the Admissions Office (${record.reference}).`,
-          actor: 'Admissions Office',
-          at: new Date().toISOString().slice(0, 10),
-        }],
+        timeline: [...(entry.timeline || []), stageEvent],
       } : entry),
-      notifications: prependInAppNotification(previous, {
-        id: `not-${crypto.randomUUID()}`,
-        title: `${application.scholarshipTitle} result released`,
-        channel: 'Email',
-        body: 'The Admissions Office has released the result of your scholarship application.',
-        status: 'Unread',
-        createdAt: new Date().toISOString().slice(0, 10),
-      }),
     }));
   };
 
@@ -1003,6 +1003,28 @@ function App() {
     }));
 
     event.currentTarget.reset();
+  };
+
+  const saveScholarship = async (scholarship) => {
+    if (!scholarship?.title || !scholarship?.coverage || !['general-pool', 'honors', 'work-study'].includes(scholarship.ruleFamily)) return;
+    if (!isSupabaseWorkspaceLoaded) {
+      window.alert('Supabase is not configured, so the scholarship could not be saved.');
+      return;
+    }
+    const result = scholarship.id
+      ? await updateSupabaseScholarship(scholarship.id, scholarship)
+      : await createSupabaseScholarship(scholarship);
+    if (result.error || !result.data) {
+      window.alert(result.error?.message || 'The scholarship could not be saved. Confirm Supabase is configured and apply pending migrations.');
+      return;
+    }
+
+    const saved = result.data;
+    setState((previous) => ({
+      ...previous,
+      scholarships: [saved, ...(previous.scholarships || []).filter((entry) => entry.id !== saved.id)],
+    }));
+    return true;
   };
 
   const markNotificationRead = (notificationId) => {
@@ -1367,8 +1389,8 @@ function App() {
               applications={state.applications}
               students={state.students}
               documents={state.documents}
+              scholarships={state.scholarships || []}
               announcements={state.announcements}
-              notifications={visibleNotifications}
               onChangeApplication={changeApplicationStatus}
               onEndorseApplication={endorseApplication}
               onScheduleInterview={scheduleInterview}
@@ -1376,7 +1398,7 @@ function App() {
               onReleaseResults={releaseApplicationResults}
               onChangeDocument={changeDocumentStatus}
               onCreateAnnouncement={addAnnouncement}
-              onMarkRead={markNotificationRead}
+              onSaveScholarship={saveScholarship}
             />
           )}
 
@@ -1387,9 +1409,6 @@ function App() {
               documents={state.documents}
               onChangeApplication={changeApplicationStatus}
               onEndorseApplication={endorseApplication}
-              onScheduleInterview={scheduleInterview}
-              onRecordDeliberation={recordDeliberation}
-              onReleaseResults={releaseApplicationResults}
               onFlagForValidation={flagApplicationForValidation}
             />
           )}
