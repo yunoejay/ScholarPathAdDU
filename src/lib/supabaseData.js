@@ -85,7 +85,7 @@ const ensureReady = () => hasSupabaseConfig && supabase;
 export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
   if (!ensureReady()) return { success: false, fallback: true };
 
-  const [scholarshipsResult, applicationsResult, documentsResult, announcementsResult, notificationsResult, reviewsResult, deadlinesResult] = await Promise.all([
+  const [scholarshipsResult, applicationsResult, documentsResult, announcementsResult, notificationsResult, reviewsResult, deadlinesResult, profilesResult] = await Promise.all([
     supabase.from('scholarships').select('*').order('deadline', { ascending: true }),
     supabase.from('applications').select('*').order('updated_at', { ascending: false }),
     supabase.from('documents').select('*').order('uploaded_at', { ascending: false }),
@@ -95,8 +95,11 @@ export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
       ? supabase.from('department_reviews').select('*').eq('department', department).order('created_at', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     supabase.from('custom_deadlines').select('id, title, deadline, created_at').eq('owner_id', userId),
+    // Staff queues need applicant context. students_read is limited to their own
+    // profile by RLS, so this select is safe for every role.
+    supabase.from('profiles').select('user_id, full_name, department, degree_program, qpi, household_income'),
   ]);
-  const failed = [scholarshipsResult, applicationsResult, documentsResult, announcementsResult, notificationsResult, reviewsResult].find((result) => result.error);
+  const failed = [scholarshipsResult, applicationsResult, documentsResult, announcementsResult, notificationsResult, reviewsResult, profilesResult].find((result) => result.error);
   if (failed) return { success: false, fallback: false, message: failed.error.message };
 
   // Pending-migration tolerance: an unavailable custom_deadlines table yields no
@@ -110,10 +113,12 @@ export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
   const scholarshipById = Object.fromEntries(scholarships.map((entry) => [entry.id, entry]));
   const documents = (documentsResult.data || []).map(toDocument);
 
-  // Staff queues need applicant context. students_read is limited to their own
-  // profile by RLS, so this select is safe for every role.
-  const profilesResult = await supabase.from('profiles').select('user_id, full_name, department, degree_program, qpi, household_income');
   const studentById = Object.fromEntries((profilesResult.data || []).map((entry) => [entry.user_id, entry]));
+  const documentsWithOwners = documents.map((entry) => ({
+    ...entry,
+    ownerName: studentById[entry.ownerId]?.full_name || 'Student applicant',
+    ownerDepartment: studentById[entry.ownerId]?.department || '',
+  }));
   const documentIdsByApplication = {};
   const applicationIds = (applicationsResult.data || []).map((entry) => entry.id);
   if (applicationIds.length) {
@@ -129,7 +134,7 @@ export const loadSupabaseWorkspace = async ({ role, userId, department }) => {
     fallback: false,
     scholarships,
     applications: (applicationsResult.data || []).map((entry) => toApplication(entry, scholarshipById, documentIdsByApplication, studentById)),
-    documents,
+    documents: documentsWithOwners,
     announcements: (announcementsResult.data || []).map(toAnnouncement),
     notifications: (notificationsResult.data || []).map(toNotification),
     departmentReviews: (reviewsResult.data || []).map(toDepartmentReview),
@@ -150,22 +155,64 @@ export const loadSupabaseAcademicPrograms = async () => {
   };
 };
 
-export const updateSupabaseApplicationStatus = (applicationId, status) => (
-  ensureReady() ? supabase.from('applications').update({ status, updated_at: new Date().toISOString() }).eq('id', applicationId) : Promise.resolve({ error: null })
+export const createSupabaseScholarship = async (scholarship) => {
+  if (!ensureReady()) return { data: null, error: { message: 'Supabase is not configured.' } };
+  const result = await supabase.from('scholarships').insert(scholarshipToRow(scholarship)).select('*').single();
+  return { ...result, data: result.data ? toScholarship(result.data) : null };
+};
+
+export const updateSupabaseScholarship = async (scholarshipId, scholarship) => {
+  if (!ensureReady()) return { data: null, error: { message: 'Supabase is not configured.' } };
+  const result = await supabase.from('scholarships').update({
+    ...scholarshipToRow(scholarship),
+    updated_at: new Date().toISOString(),
+  }).eq('id', scholarshipId).select('*').single();
+  return { ...result, data: result.data ? toScholarship(result.data) : null };
+};
+
+const scholarshipToRow = (scholarship) => ({
+  title: scholarship.title,
+  category: scholarship.category,
+  origin: scholarship.origin || 'AdDU',
+  coverage_type: scholarship.coverageType,
+  coverage: scholarship.coverage,
+  minimum_qpi: scholarship.minimumQpi == null || scholarship.minimumQpi === '' ? null : Number(scholarship.minimumQpi),
+  maximum_income: scholarship.maximumIncome == null || scholarship.maximumIncome === '' ? null : Number(scholarship.maximumIncome),
+  eligible_degrees: Array.isArray(scholarship.eligibleDegrees) ? scholarship.eligibleDegrees : [],
+  allows_multiple_grants: scholarship.allowsMultipleGrants !== false,
+  department_scope: scholarship.departmentScope || null,
+  deadline: scholarship.deadline || null,
+  is_active: scholarship.isActive !== false,
+  tags: Array.isArray(scholarship.tags) ? scholarship.tags : [],
+  rule_family: scholarship.ruleFamily,
+  gov_program: scholarship.govProgram || null,
+  is_matchable: scholarship.isMatchable !== false,
+  application_route: scholarship.applicationRoute || null,
+  is_external: false,
+  appendix_number: scholarship.appendixNumber ?? null,
+});
+
+export const updateSupabaseApplicationStatus = (applicationId, status, timeline, stagePatch = {}) => (
+  ensureReady() ? supabase.from('applications').update({
+    ...stagePatch,
+    status,
+    updated_at: new Date().toISOString(),
+    ...(Array.isArray(timeline) ? { timeline } : {}),
+  }).eq('id', applicationId).then(({ error }) => ({ error })) : Promise.resolve({ error: null })
 );
 
 // Persists an SOP stage payload (endorsement, interview, deliberation, release)
 // alongside the application status and timeline.
 export const updateSupabaseApplicationStage = (applicationId, status, stagePatch = {}) => (
   ensureReady()
-    ? supabase.from('applications').update({ status, updated_at: new Date().toISOString(), ...stagePatch }).eq('id', applicationId)
+    ? supabase.from('applications').update({ status, updated_at: new Date().toISOString(), ...stagePatch }).eq('id', applicationId).then(({ error }) => ({ error }))
     : Promise.resolve({ error: null })
 );
 
 // Department review records mirror chair decisions for schema-level auditing.
 export const upsertSupabaseDepartmentReview = ({ applicationId, reviewerId, studentName, department, qpi, householdIncome, status, recommendation }) => (
   ensureReady()
-    ? supabase.from('department_reviews').insert({
+    ? supabase.from('department_reviews').upsert({
         application_id: applicationId,
         reviewer_id: reviewerId,
         student_name: studentName || 'Student applicant',
@@ -174,7 +221,7 @@ export const upsertSupabaseDepartmentReview = ({ applicationId, reviewerId, stud
         household_income: householdIncome ?? 0,
         status,
         recommendation: recommendation || recommendationNote(status),
-      }).select().single()
+      }, { onConflict: 'application_id,reviewer_id' }).select().single()
     : Promise.resolve({ data: null, error: null })
 );
 
@@ -192,9 +239,15 @@ export const createSupabaseApplication = async ({ studentId, scholarshipId, docu
   return links.error ? { data: null, error: links.error } : result;
 };
 
-export const submitSupabaseApplication = (applicationId) => (
+export const submitSupabaseApplication = (applicationId, timeline) => (
   ensureReady()
-    ? supabase.from('applications').update({ status: 'Submitted', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', applicationId)
+    ? supabase.from('applications').update({
+        status: 'Submitted',
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...(Array.isArray(timeline) ? { timeline } : {}),
+      }).eq('id', applicationId)
+        .then(({ error }) => ({ error }))
     : Promise.resolve({ error: null })
 );
 

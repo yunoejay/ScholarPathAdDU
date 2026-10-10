@@ -505,7 +505,6 @@ export const validateAcademicSection = (form = {}, academicPrograms = []) => {
 
 export const validateFinancialSection = (form = {}) => collect({
   householdIncome: validateHouseholdIncome(form.householdIncome),
-  hasActiveGovernmentGrant: ok(Boolean(form.hasActiveGovernmentGrant)),
   hasOtherActiveScholarship: ok(Boolean(form.hasOtherActiveScholarship)),
   hasSiblingOnAid: ok(Boolean(form.hasSiblingOnAid)),
   isOnPrepaidPlan: ok(Boolean(form.isOnPrepaidPlan)),

@@ -22,7 +22,26 @@ const nextStatusMap = {
   Rejected: [],
 };
 
-export const getNextApplicationStatuses = (status) => nextStatusMap[status] || [];
+const roleNextStatusMap = {
+  admissions_office: {
+    Submitted: ['Under Review', 'For Verification', 'Rejected'],
+    'Under Review': ['For Verification', 'Rejected'],
+    'For Verification': ['Rejected'],
+    Endorsed: ['Rejected'],
+    Interview: ['Rejected'],
+    Recommended: ['Approved', 'Rejected'],
+    Approved: ['Released'],
+  },
+  department_chair: {
+    'For Verification': ['Endorsed'],
+  },
+};
+
+export const getNextApplicationStatuses = (status, role) => {
+  if (role === 'department_chair') return roleNextStatusMap.department_chair[status] || [];
+  if (role === 'admissions_office') return roleNextStatusMap.admissions_office[status] || [];
+  return nextStatusMap[status] || [];
+};
 
 export const sopStageIndex = (status) => {
   const index = sopStages.indexOf(status);
